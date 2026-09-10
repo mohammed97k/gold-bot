@@ -1,0 +1,65 @@
+import requests
+import yfinance as yf
+
+# بيانات تليغرام
+TELEGRAM_TOKEN = "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
+CHAT_ID = "1376555014"
+
+def send_telegram(msg):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
+    requests.post(url, json=payload, timeout=10)
+
+def main():
+    try:
+        # جلب بيانات الذهب
+        gold = yf.Ticker("GC=F").history(period="5d", interval="1h")
+        if gold.empty or len(gold) < 15:
+            return
+
+        # ================= ICT Model =================
+        recent = gold.iloc[-10:]
+        bsl = float(recent['High'].iloc[:-2].max())
+        ssl = float(recent['Low'].iloc[:-2].min())
+
+        last_close = float(gold['Close'].iloc[-2])
+        last_open  = float(gold['Open'].iloc[-2])
+        last_high  = float(gold['High'].iloc[-2])
+        last_low   = float(gold['Low'].iloc[-2])
+        prev_high  = float(gold['High'].iloc[-3])
+        prev_low   = float(gold['Low'].iloc[-3])
+
+        body = abs(last_close - last_open)
+        c_range = last_high - last_low
+        displacement = (body / c_range > 0.6) if c_range > 0 else False
+
+        if prev_low < ssl and last_close > bsl and displacement:
+            sl = prev_low
+            tp = last_close + ((last_close - sl) * 2.5)
+            send_telegram(f"🚨 *إشارة شراء ICT - الذهب*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
+
+        elif prev_high > bsl and last_close < ssl and displacement:
+            sl = prev_high
+            tp = last_close - ((sl - last_close) * 2.5)
+            send_telegram(f"🚨 *إشارة بيع ICT - الذهب*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
+
+        # ================= MSNR Model =================
+        resistance = float(gold['High'].iloc[-15:-2].max())
+        support    = float(gold['Low'].iloc[-15:-2].min())
+        prev_close = float(gold['Close'].iloc[-3])
+
+        if prev_close < support and last_high >= support and last_close < support:
+            sl = last_high + 1.5
+            tp = last_close - ((sl - last_close) * 2.0)
+            send_telegram(f"🎯 *إشارة قناص MSNR (بيع ذهب)*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+
+        elif prev_close > resistance and last_low <= resistance and last_close > resistance:
+            sl = last_low - 1.5
+            tp = last_close + ((last_close - sl) * 2.0)
+            send_telegram(f"🎯 *إشارة قناص MSNR (شراء ذهب)*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    main()
