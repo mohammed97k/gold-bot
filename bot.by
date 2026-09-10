@@ -2,46 +2,35 @@ import requests
 
 TELEGRAM_TOKEN = "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
 CHAT_ID = "1376555014"
+API_KEY = "E12a2b0e02d4479094bd0e968e8b35e4"
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
-    try:
-        requests.post(url, json=payload, timeout=10)
-    except:
-        pass
+    requests.post(url, json=payload, timeout=10)
 
 def main():
     try:
-        # جلب شموع وسعر الذهب الفوري الحقيقي XAUUSD من خادم TradingView/Investing المباشر
-        headers = {"User-Agent": "Mozilla/5.0"}
-        url = "https://api.investing.com/api/financialdata/68/historical/chart/?interval=PT1H&pointscounter=30"
-        
-        # بديل فوري ومضمون لبيانات الفوركس اللحظية
-        f_url = "https://financialmodelingprep.com/api/v3/historical-chart/1hour/XAUUSD?apikey=demo"
-        res = requests.get(f_url, timeout=10).json()
+        # جلب شموع وسعر الذهب الفوري XAU/USD من المصدر الرسمي
+        url = f"https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1h&outputsize=25&apikey={API_KEY}"
+        data = requests.get(url, timeout=10).json()
 
-        candles = []
-        if isinstance(res, list) and len(res) >= 15:
-            # ترتيب البيانات من الأقدم للأحدث
-            for item in reversed(res[:25]):
-                candles.append({
-                    "open": float(item["open"]),
-                    "high": float(item["high"]),
-                    "low": float(item["low"]),
-                    "close": float(item["close"])
-                })
-        else:
-            # سيرفر احتياطي مجاني لحظي لأسعار XAUUSD الفورية
-            tv_url = "https://scanner.tradingview.com/forex/scan"
-            tv_data = {"symbols": {"tickers": ["OANDA:XAUUSD"]}, "columns": ["close", "open", "high", "low"]}
-            tv_res = requests.post(tv_url, json=tv_data, headers=headers, timeout=10).json()
-            p = float(tv_res['data'][0]['d'][0])
-            send_telegram(f"🟢 *تم فحص السوق بنجاح*\nسعر الذهب الفوري (XAUUSD): `{p:.2f}`\nجاري متابعة الشروط...")
+        if "values" not in data:
+            send_telegram(f"⚠️ خطأ: {data.get('message', 'تأكد من إعدادات المفتاح')}")
             return
 
+        raw_candles = list(reversed(data["values"]))
+        candles = []
+        for c in raw_candles:
+            candles.append({
+                "open": float(c["open"]),
+                "high": float(c["high"]),
+                "low": float(c["low"]),
+                "close": float(c["close"])
+            })
+
         current_price = candles[-1]["close"]
-        send_telegram(f"🟢 *تم فحص الذهب الفوري XAUUSD*\nالسعر الحالي: `{current_price:.2f}`\nجاري مراقبة نماذج ICT و MSNR...")
+        send_telegram(f"🟢 *تم فحص الذهب الفوري بنجاح*\nالسعر اللحظي (XAU/USD): `{current_price:.2f}`\nجاري مراقبة نماذج ICT و MSNR...")
 
         # ================= ICT Model =================
         recent_highs = [c["high"] for c in candles[-10:-2]]
@@ -83,7 +72,7 @@ def main():
             send_telegram(f"🎯 *إشارة قناص MSNR (شراء ذهب)*\n\n📌 الدخول: `{last_c['close']:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
 
     except Exception as e:
-        send_telegram(f"⚠️ تنبيه: {e}")
+        send_telegram(f"⚠️ خطأ: {e}")
 
 if __name__ == "__main__":
     main()
