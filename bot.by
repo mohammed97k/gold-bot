@@ -11,15 +11,15 @@ def send_telegram(msg):
 
 def main():
     try:
-        # جلب بيانات الذهب
-        gold = yf.Ticker("GC=F").history(period="5d", interval="1h")
+        # جلب بيانات الذهب الفوري مقابل الدولار (Spot Gold)
+        gold = yf.Ticker("XAUUSD=X").history(period="5d", interval="1h")
         if gold.empty or len(gold) < 15:
             send_telegram("⚠️ تعذر جلب بيانات الذهب من المزود حالياً.")
             return
 
         current_price = float(gold['Close'].iloc[-1])
-        # إشعار للتأكد من عمل البوت والربط
-        send_telegram(f"🟢 *تم فحص السوق بنجاح*\nالسعر الحالي للذهب: `{current_price:.2f}`\nجاري مراقبة نماذج ICT و MSNR...")
+        # إشعار للتأكد من عمل البوت وتطابق السعر
+        send_telegram(f"🟢 *تم فحص السوق بنجاح*\nالسعر الحالي للذهب الفوري (XAUUSD): `{current_price:.2f}`\nجاري مراقبة نماذج ICT و MSNR...")
 
         # ================= ICT Model =================
         recent = gold.iloc[-10:]
