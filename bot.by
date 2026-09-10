@@ -2,7 +2,7 @@ import requests
 
 TELEGRAM_TOKEN = "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
 CHAT_ID = "1376555014"
-API_KEY = "E12a2b0e02d4479094bd0e968e8b35e4"
+API_KEY = "e12a2b0e02d4479094bd0e968e8b35e4"
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -11,12 +11,11 @@ def send_telegram(msg):
 
 def main():
     try:
-        # جلب شموع وسعر الذهب الفوري XAU/USD من المصدر الرسمي
         url = f"https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1h&outputsize=25&apikey={API_KEY}"
         data = requests.get(url, timeout=10).json()
 
         if "values" not in data:
-            send_telegram(f"⚠️ خطأ: {data.get('message', 'تأكد من إعدادات المفتاح')}")
+            send_telegram(f"⚠️ خطأ: {data.get('message', 'تأكد من المفتاح')}")
             return
 
         raw_candles = list(reversed(data["values"]))
