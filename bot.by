@@ -1,5 +1,4 @@
 import requests
-import yfinance as yf
 
 TELEGRAM_TOKEN = "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
 CHAT_ID = "1376555014"
@@ -11,56 +10,66 @@ def send_telegram(msg):
 
 def main():
     try:
-        # جلب بيانات الذهب الفوري مقابل الدولار (Spot Gold)
-        gold = yf.Ticker("XAUUSD=X").history(period="5d", interval="1h")
-        if gold.empty or len(gold) < 15:
-            send_telegram("⚠️ تعذر جلب بيانات الذهب من المزود حالياً.")
+        # جلب شموع الذهب الفوري XAUUSD بدقة ميتاتريدر
+        url = "https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=1h&limit=25"
+        res = requests.get(url, timeout=10).json()
+
+        if not res or len(res) < 15:
+            send_telegram("⚠️ تعذر جلب بيانات الذهب حالياً.")
             return
 
-        current_price = float(gold['Close'].iloc[-1])
-        # إشعار للتأكد من عمل البوت وتطابق السعر
-        send_telegram(f"🟢 *تم فحص السوق بنجاح*\nالسعر الحالي للذهب الفوري (XAUUSD): `{current_price:.2f}`\nجاري مراقبة نماذج ICT و MSNR...")
+        # تحويل البيانات إلى أرقام
+        # Binance kline format: [open_time, open, high, low, close, ...]
+        candles = []
+        for c in res:
+            candles.append({
+                "open": float(c[1]),
+                "high": float(c[2]),
+                "low": float(c[3]),
+                "close": float(c[4])
+            })
+
+        current_price = candles[-1]["close"]
+        send_telegram(f"🟢 *تم فحص السوق بنجاح*\nالسعر الحالي للذهب: `{current_price:.2f}`\nجاري مراقبة نماذج ICT و MSNR...")
 
         # ================= ICT Model =================
-        recent = gold.iloc[-10:]
-        bsl = float(recent['High'].iloc[:-2].max())
-        ssl = float(recent['Low'].iloc[:-2].min())
+        recent_highs = [c["high"] for c in candles[-12:-2]]
+        recent_lows  = [c["low"] for c in candles[-12:-2]]
+        bsl = max(recent_highs)
+        ssl = min(recent_lows)
 
-        last_close = float(gold['Close'].iloc[-2])
-        last_open  = float(gold['Open'].iloc[-2])
-        last_high  = float(gold['High'].iloc[-2])
-        last_low   = float(gold['Low'].iloc[-2])
-        prev_high  = float(gold['High'].iloc[-3])
-        prev_low   = float(gold['Low'].iloc[-3])
+        last_c = candles[-2]
+        prev_c = candles[-3]
 
-        body = abs(last_close - last_open)
-        c_range = last_high - last_low
+        body = abs(last_c["close"] - last_c["open"])
+        c_range = last_c["high"] - last_c["low"]
         displacement = (body / c_range > 0.6) if c_range > 0 else False
 
-        if prev_low < ssl and last_close > bsl and displacement:
-            sl = prev_low
-            tp = last_close + ((last_close - sl) * 2.5)
-            send_telegram(f"🚨 *إشارة شراء ICT - الذهب*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
+        if prev_c["low"] < ssl and last_c["close"] > bsl and displacement:
+            sl = prev_c["low"]
+            tp = last_c["close"] + ((last_c["close"] - sl) * 2.5)
+            send_telegram(f"🚨 *إشارة شراء ICT - الذهب*\n\n📌 الدخول: `{last_c['close']:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
 
-        elif prev_high > bsl and last_close < ssl and displacement:
-            sl = prev_high
-            tp = last_close - ((sl - last_close) * 2.5)
-            send_telegram(f"🚨 *إشارة بيع ICT - الذهب*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
+        elif prev_c["high"] > bsl and last_c["close"] < ssl and displacement:
+            sl = prev_c["high"]
+            tp = last_c["close"] - ((sl - last_c["close"]) * 2.5)
+            send_telegram(f"🚨 *إشارة بيع ICT - الذهب*\n\n📌 الدخول: `{last_c['close']:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
 
         # ================= MSNR Model =================
-        resistance = float(gold['High'].iloc[-15:-2].max())
-        support    = float(gold['Low'].iloc[-15:-2].min())
-        prev_close = float(gold['Close'].iloc[-3])
+        snr_highs = [c["high"] for c in candles[-17:-2]]
+        snr_lows  = [c["low"] for c in candles[-17:-2]]
+        resistance = max(snr_highs)
+        support    = min(snr_lows)
 
-        if prev_close < support and last_high >= support and last_close < support:
-            sl = last_high + 1.5
-            tp = last_close - ((sl - last_close) * 2.0)
-            send_telegram(f"🎯 *إشارة قناص MSNR (بيع ذهب)*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+        if prev_c["close"] < support and last_c["high"] >= support and last_c["close"] < support:
+            sl = last_c["high"] + 1.5
+            tp = last_c["close"] - ((sl - last_c["close"]) * 2.0)
+            send_telegram(f"🎯 *إشارة قناص MSNR (بيع ذهب)*\n\n📌 الدخول: `{last_c['close']:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
 
-        elif prev_close > resistance and last_low <= resistance and last_close > resistance:
-            sl = last_low - 1.5
-            tp = last_close + ((last_close - sl) * 2.0)
-            send_telegram(f"🎯 *إشارة قناص MSNR (شراء ذهب)*\n\n📌 الدخول: `{last_close:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+        elif prev_c["close"] > resistance and last_c["low"] <= resistance and last_c["close"] > resistance:
+            sl = last_c["low"] - 1.5
+            tp = last_c["close"] + ((last_c["close"] - sl) * 2.0)
+            send_telegram(f"🎯 *إشارة قناص MSNR (شراء ذهب)*\n\n📌 الدخول: `{last_c['close']:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
 
     except Exception as e:
         print(f"Error: {e}")
