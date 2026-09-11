@@ -1,110 +1,202 @@
+import time
+import datetime
 import requests
-from datetime import datetime, timezone, timedelta
+import MetaTrader5 as mt5
+import pandas as pd
 
-TELEGRAM_TOKEN = "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
-CHAT_ID = "1376555014"
-API_KEY = "e12a2b0e02d4479094bd0e968e8b35e4"
+# ==========================================
+# إعدادات الحساب وتليجرام
+# ==========================================
+TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
+TELEGRAM_CHAT_ID = "YOUR_CHAT_ID_HERE"
 
-IRAQ_TZ = timezone(timedelta(hours=3))
+# إعدادات الأصول (الذهب والمؤشرات)
+SYMBOLS = {
+    "XAUUSD": {"sl_pts": 10.0, "tp_pts": 25.0},
+    "US30":   {"sl_pts": 100.0, "tp_pts": 250.0},
+    "NAS100": {"sl_pts": 100.0, "tp_pts": 250.0}
+}
 
-def get_iraq_time():
-    return datetime.now(IRAQ_TZ).strftime("%I:%M:%S %p")
+LOT_SIZE = 0.01  # حجم العقد الأساسي
 
-def send_telegram(msg):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
+# ==========================================
+# دالة إرسال الإشعارات لتليجرام
+# ==========================================
+def send_telegram(message):
+    if TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+        print(f"[ALERT]: {message}")
+        return
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
     try:
-        requests.post(url, json=payload, timeout=15)
-    except Exception:
-        pass
+        requests.post(url, json=payload, timeout=5)
+    except Exception as e:
+        print(f"Telegram error: {e}")
 
-def fetch_candles(symbol, interval, size=25):
-    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&outputsize={size}&apikey={API_KEY}"
-    res = requests.get(url, timeout=15).json()
-    if "values" not in res:
+# ==========================================
+# جلب بيانات الشموع من MT5
+# ==========================================
+def get_rates(symbol, timeframe=mt5.TIMEFRAME_M15, count=50):
+    rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, count)
+    if rates is None or len(rates) == 0:
         return None
-    raw = list(reversed(res["values"]))
-    candles = []
-    for c in raw:
-        candles.append({
-            "open": float(c["open"]),
-            "high": float(c["high"]),
-            "low": float(c["low"]),
-            "close": float(c["close"])
-        })
-    return candles
+    df = pd.DataFrame(rates)
+    df['time'] = pd.to_datetime(df['time'], unit='s')
+    return df
 
-def analyze_market(symbol_title, symbol_code, decimals=2):
-    try:
-        # جلب شموع 5 دقائق للدخول القناص بـ FVG
-        candles_5m = fetch_candles(symbol_code, "5min", 25)
-        # جلب شموع الساعة لتأكيد اتجاه ومستويات SNR
-        candles_1h = fetch_candles(symbol_code, "1h", 25)
+# ==========================================
+# منطق كشف مستويات MSNR (دعم V ومقاومة A)
+# ==========================================
+def analyze_msnr(df):
+    c2_close = df['close'].iloc[-2]
+    c2_open  = df['open'].iloc[-2]
+    c2_high  = df['high'].iloc[-2]
+    c2_low   = df['low'].iloc[-2]
 
-        if not candles_5m or not candles_1h:
-            return
+    res_level = None
+    sup_level = None
 
-        iq_time = get_iraq_time()
-        rr = 3.0
+    # استخراج مستويات A و V الكلاسيكية من آخر الشموع
+    for i in range(3, 15):
+        if df['close'].iloc[-i] > df['open'].iloc[-i] and df['close'].iloc[-i+1] < df['open'].iloc[-i+1]:
+            if res_level is None:
+                res_level = df['close'].iloc[-i]
+        if df['close'].iloc[-i] < df['open'].iloc[-i] and df['close'].iloc[-i+1] > df['open'].iloc[-i+1]:
+            if sup_level is None:
+                sup_level = df['close'].iloc[-i]
+        if res_level and sup_level:
+            break
 
-        # 1. منطق ICT: كشف فجوة السعر FVG على فريم 5 دقائق
-        # الشمعة المغلقة الحالية هي -2، الشمعة التي قبلها -3، والشمعة المنطلقة -4
-        c_cur = candles_5m[-2]
-        c_prev = candles_5m[-3]
-        c_past = candles_5m[-4]
+    signal = None
+    # شروط الرفض واختبار الشمعة الحالية
+    if sup_level and c2_low <= sup_level and c2_close > sup_level and c2_close > c2_open:
+        signal = "BUY"
+    elif res_level and c2_high >= res_level and c2_close < res_level and c2_close < c2_open:
+        signal = "SELL"
 
-        # فجوة شرائية: قاع الشمعة الحالية أعلى من قمة الشمعة قبل السابقة
-        bullish_fvg = (c_cur["low"] > c_past["high"]) and (c_cur["close"] > c_past["high"])
-        # فجوة بيعية: قمة الشمعة الحالية أدنى من قاع الشمعة قبل السابقة
-        bearish_fvg = (c_cur["high"] < c_past["low"]) and (c_cur["close"] < c_past["low"])
+    return signal
 
-        if bullish_fvg:
-            entry = c_cur["close"]
-            sl = c_cur["low"]
-            tp = entry + ((entry - sl) * rr)
-            send_telegram(f"⚡ *إشارة ICT FVG BUY (دخول سريع)*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف (300+ نقطة): `{tp:.{decimals}f}`\n⏱ التوقيت: `{iq_time}`")
-            return
+# ==========================================
+# تنفيذ الصفقة
+# ==========================================
+def execute_trade(symbol, signal_type, sl_pts, tp_pts):
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is None:
+        return
 
-        if bearish_fvg:
-            entry = c_cur["close"]
-            sl = c_cur["high"]
-            tp = entry - ((sl - entry) * rr)
-            send_telegram(f"⚡ *إشارة ICT FVG SELL (دخول سريع)*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف (300+ نقطة): `{tp:.{decimals}f}`\n⏱ التوقيت: `{iq_time}`")
-            return
+    order_type = mt5.ORDER_TYPE_BUY if signal_type == "BUY" else mt5.ORDER_TYPE_SELL
+    entry_price = tick.ask if signal_type == "BUY" else tick.bid
 
-        # 2. منطق SNR الساعي: كشف الارتداد الحقيقي Rejection من مستويات الساعة
-        last_1h = candles_1h[-2]
-        recent_1h = candles_1h[-12:-2]
-        res_level = max([c["high"] for c in recent_1h])
-        sup_level = min([c["low"] for c in recent_1h])
+    if signal_type == "BUY":
+        sl = round(entry_price - sl_pts, 2)
+        tp = round(entry_price + tp_pts, 2)
+    else:
+        sl = round(entry_price + sl_pts, 2)
+        tp = round(entry_price - tp_pts, 2)
 
-        snr_sell = (last_1h["high"] >= res_level) and (last_1h["close"] < res_level) and (last_1h["close"] < last_1h["open"])
-        snr_buy  = (last_1h["low"] <= sup_level) and (last_1h["close"] > sup_level) and (last_1h["close"] > last_1h["open"])
+    request = {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": symbol,
+        "volume": LOT_SIZE,
+        "type": order_type,
+        "price": entry_price,
+        "sl": sl,
+        "tp": tp,
+        "deviation": 20,
+        "magic": 777777,
+        "comment": "MSNR Bot",
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": mt5.ORDER_FILLING_IOC,
+    }
 
-        if snr_sell:
-            entry = last_1h["close"]
-            sl = last_1h["high"]
-            tp = entry - ((sl - entry) * 2.0)
-            send_telegram(f"🛡️ *إشارة SNR REJECTION SELL*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الفريم: ساعة مع تأكيد الرفض\n⏱ التوقيت: `{iq_time}`")
-            return
+    res = mt5.order_send(request)
+    if res.retcode == mt5.TRADE_RETCODE_DONE:
+        msg = (
+            f"🎯 *إشارة تنفيذ جديدة [{signal_type}]*\n"
+            f"🔹 الأصل: `{symbol}`\n"
+            f"📌 الدخول: `{entry_price}`\n"
+            f"🛑 الستوب: `{sl}`\n"
+            f"🎯 الهدف: `{tp}`\n"
+            f"⏱ الوقت: `{datetime.datetime.now().strftime('%I:%M %p')}`"
+        )
+        send_telegram(msg)
+    else:
+        print(f"Order failed: {res.comment}")
 
-        if snr_buy:
-            entry = last_1h["close"]
-            sl = last_1h["low"]
-            tp = entry + ((entry - sl) * 2.0)
-            send_telegram(f"🛡️ *إشارة SNR REJECTION BUY*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الفريم: ساعة مع تأكيد الرفض\n⏱ التوقيت: `{iq_time}`")
-            return
+# ==========================================
+# إدارة الصفقات النشطة والتأمين التلقائي (BE)
+# ==========================================
+def manage_active_positions():
+    positions = mt5.positions_get(magic=777777)
+    if positions is None or len(positions) == 0:
+        return 0
 
-    except Exception:
-        pass
+    for pos in positions:
+        symbol = pos.symbol
+        config = SYMBOLS.get(symbol)
+        if not config:
+            continue
 
+        open_price = pos.price_open
+        current_price = pos.price_current
+        current_sl = pos.sl
+        ticket = pos.ticket
+        pos_type = pos.type
+
+        # تأمين الصفقة عند تحقيق المسافة المطلوبة للربح
+        if pos_type == mt5.ORDER_TYPE_BUY:
+            if (current_price - open_price) >= config["sl_pts"] and current_sl < open_price:
+                req = {
+                    "action": mt5.TRADE_ACTION_SLTP,
+                    "position": ticket,
+                    "sl": open_price + 0.1,
+                    "tp": pos.tp
+                }
+                mt5.order_send(req)
+                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol}` عند سعر الدخول.")
+
+        elif pos_type == mt5.ORDER_TYPE_SELL:
+            if (open_price - current_price) >= config["sl_pts"] and (current_sl > open_price or current_sl == 0.0):
+                req = {
+                    "action": mt5.TRADE_ACTION_SLTP,
+                    "position": ticket,
+                    "sl": open_price - 0.1,
+                    "tp": pos.tp
+                }
+                mt5.order_send(req)
+                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol}` عند سعر الدخول.")
+
+    return len(positions)
+
+# ==========================================
+# حلقة التشغيل الرئيسية
+# ==========================================
 def main():
-    # فحص الذهب، المؤشرات، والعملات
-    analyze_market("الذهب (XAU/USD)", "XAU/USD", decimals=2)
-    analyze_market("داو جونز (US30)", "DJI", decimals=2)
-    analyze_market("ناسداك (NAS100)", "IXIC", decimals=2)
-    analyze_market("الباوند (GBP/USD)", "GBP/USD", decimals=5)
-    analyze_market("اليورو (EUR/USD)", "EUR/USD", decimals=5)
+    if not mt5.initialize():
+        print("MT5 initialization failed.")
+        return
+
+    print("🚀 MSNR Bot is active...")
+    send_telegram("🚀 *تم تفعيل بوت MSNR بنجاح وانطلاق العمليات.*")
+
+    while True:
+        try:
+            # قفل النظام بالكامل طالما هناك صفقة نشطة واحدة
+            active_count = manage_active_positions()
+
+            if active_count == 0:
+                for symbol, settings in SYMBOLS.items():
+                    df = get_rates(symbol)
+                    if df is not None:
+                        signal = analyze_msnr(df)
+                        if signal:
+                            execute_trade(symbol, signal, settings["sl_pts"], settings["tp_pts"])
+                            break
+
+            time.sleep(15)
+        except Exception as e:
+            print(f"Error in main loop: {e}")
+            time.sleep(15)
 
 if __name__ == "__main__":
     main()
