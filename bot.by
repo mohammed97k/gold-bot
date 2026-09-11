@@ -1,202 +1,129 @@
-import time
-import datetime
+import os
 import requests
-import MetaTrader5 as mt5
-import pandas as pd
+from datetime import datetime, timezone, timedelta
 
-# ==========================================
-# إعدادات الحساب وتليجرام
-# ==========================================
-TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
-TELEGRAM_CHAT_ID = "YOUR_CHAT_ID_HERE"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE")
+CHAT_ID = os.getenv("CHAT_ID", "1376555014")
+API_KEY = os.getenv("API_KEY", "e12a2b0e02d4479094bd0e968e8b35e4")
 
-# إعدادات الأصول (الذهب والمؤشرات)
-SYMBOLS = {
-    "XAUUSD": {"sl_pts": 10.0, "tp_pts": 25.0},
-    "US30":   {"sl_pts": 100.0, "tp_pts": 250.0},
-    "NAS100": {"sl_pts": 100.0, "tp_pts": 250.0}
-}
+# توقيت العراق (UTC+3)
+IRAQ_TZ = timezone(timedelta(hours=3))
 
-LOT_SIZE = 0.01  # حجم العقد الأساسي
+def get_iraq_time():
+    now = datetime.now(IRAQ_TZ)
+    return now.strftime("%I:%M:%S %p")
 
-# ==========================================
-# دالة إرسال الإشعارات لتليجرام
-# ==========================================
-def send_telegram(message):
-    if TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
-        print(f"[ALERT]: {message}")
-        return
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "Markdown"}
+def send_telegram(msg):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
     try:
-        requests.post(url, json=payload, timeout=5)
+        requests.post(url, json=payload, timeout=15)
     except Exception as e:
         print(f"Telegram error: {e}")
 
-# ==========================================
-# جلب بيانات الشموع من MT5
-# ==========================================
-def get_rates(symbol, timeframe=mt5.TIMEFRAME_M15, count=50):
-    rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, count)
-    if rates is None or len(rates) == 0:
-        return None
-    df = pd.DataFrame(rates)
-    df['time'] = pd.to_datetime(df['time'], unit='s')
-    return df
+def check_symbol(symbol_name, symbol_code, decimals=2):
+    try:
+        url = f"https://api.twelvedata.com/time_series?symbol={symbol_code}&interval=5min&outputsize=30&apikey={API_KEY}"
+        data = requests.get(url, timeout=15).json()
 
-# ==========================================
-# منطق كشف مستويات MSNR (دعم V ومقاومة A)
-# ==========================================
-def analyze_msnr(df):
-    c2_close = df['close'].iloc[-2]
-    c2_open  = df['open'].iloc[-2]
-    c2_high  = df['high'].iloc[-2]
-    c2_low   = df['low'].iloc[-2]
+        if "values" not in data:
+            return
 
-    res_level = None
-    sup_level = None
+        raw_candles = list(reversed(data["values"]))
+        candles = []
+        for c in raw_candles:
+            candles.append({
+                "open": float(c["open"]),
+                "high": float(c["high"]),
+                "low": float(c["low"]),
+                "close": float(c["close"])
+            })
 
-    # استخراج مستويات A و V الكلاسيكية من آخر الشموع
-    for i in range(3, 15):
-        if df['close'].iloc[-i] > df['open'].iloc[-i] and df['close'].iloc[-i+1] < df['open'].iloc[-i+1]:
-            if res_level is None:
-                res_level = df['close'].iloc[-i]
-        if df['close'].iloc[-i] < df['open'].iloc[-i] and df['close'].iloc[-i+1] > df['open'].iloc[-i+1]:
-            if sup_level is None:
-                sup_level = df['close'].iloc[-i]
-        if res_level and sup_level:
-            break
+        if len(candles) < 10:
+            return
 
-    signal = None
-    # شروط الرفض واختبار الشمعة الحالية
-    if sup_level and c2_low <= sup_level and c2_close > sup_level and c2_close > c2_open:
-        signal = "BUY"
-    elif res_level and c2_high >= res_level and c2_close < res_level and c2_close < c2_open:
-        signal = "SELL"
+        # قياس النقاط والأصل تماماً مثل تريدنج فيو
+        price_now = candles[-1]["close"]
+        is_gold = (price_now > 1000 and price_now < 8000) or ("XAU" in symbol_code)
+        is_index = (price_now >= 8000) or ("DJI" in symbol_code) or ("IXIC" in symbol_code)
 
-    return signal
+        sl_pts = 10.0 if is_gold else (100.0 if is_index else 0.0020)
+        tp_pts = 25.0 if is_gold else (250.0 if is_index else 0.0050)
 
-# ==========================================
-# تنفيذ الصفقة
-# ==========================================
-def execute_trade(symbol, signal_type, sl_pts, tp_pts):
-    tick = mt5.symbol_info_tick(symbol)
-    if tick is None:
-        return
+        last_c = candles[-2]
+        prev_3_c = candles[-5]
 
-    order_type = mt5.ORDER_TYPE_BUY if signal_type == "BUY" else mt5.ORDER_TYPE_SELL
-    entry_price = tick.ask if signal_type == "BUY" else tick.bid
+        # مستويات A و V الكلاسيكية
+        res_level = prev_3_c["close"] if prev_3_c["high"] == max([c["high"] for c in candles[-8:-2]]) else candles[-5]["close"]
+        sup_level = prev_3_c["close"] if prev_3_c["low"] == min([c["low"] for c in candles[-8:-2]]) else candles[-5]["close"]
 
-    if signal_type == "BUY":
-        sl = round(entry_price - sl_pts, 2)
-        tp = round(entry_price + tp_pts, 2)
-    else:
-        sl = round(entry_price + sl_pts, 2)
-        tp = round(entry_price - tp_pts, 2)
+        # شروط الدخول المنضبطة
+        buy_trigger  = (last_c["low"] <= sup_level) and (last_c["close"] > sup_level) and (last_c["close"] > last_c["open"])
+        sell_trigger = (last_c["high"] >= res_level) and (last_c["close"] < res_level) and (last_c["close"] < last_c["open"])
 
-    request = {
-        "action": mt5.TRADE_ACTION_DEAL,
-        "symbol": symbol,
-        "volume": LOT_SIZE,
-        "type": order_type,
-        "price": entry_price,
-        "sl": sl,
-        "tp": tp,
-        "deviation": 20,
-        "magic": 777777,
-        "comment": "MSNR Bot",
-        "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_IOC,
-    }
+        current_time_iq = get_iraq_time()
 
-    res = mt5.order_send(request)
-    if res.retcode == mt5.TRADE_RETCODE_DONE:
-        msg = (
-            f"🎯 *إشارة تنفيذ جديدة [{signal_type}]*\n"
-            f"🔹 الأصل: `{symbol}`\n"
-            f"📌 الدخول: `{entry_price}`\n"
-            f"🛑 الستوب: `{sl}`\n"
-            f"🎯 الهدف: `{tp}`\n"
-            f"⏱ الوقت: `{datetime.datetime.now().strftime('%I:%M %p')}`"
-        )
-        send_telegram(msg)
-    else:
-        print(f"Order failed: {res.comment}")
+        if buy_trigger:
+            entry = last_c["close"]
+            sl = entry - sl_pts
+            tp = entry + tp_pts
+            be_val = entry + sl_pts
+            
+            # 1. إشعار الدخول وتفاصيل الصفقة
+            send_telegram(
+                f"🟢 *MSNR BUY - {symbol_name}*\n\n"
+                f"📌 دخول: `{entry:.{decimals}f}`\n"
+                f"🛑 ستوب: `{sl:.{decimals}f}`\n"
+                f"🛡️ تأمين: `{be_val:.{decimals}f}`\n"
+                f"🎯 هدف: `{tp:.{decimals}f}`\n"
+                f"⏰ الفريم: 5 دقائق\n"
+                f"⏱ التوقيت (العراق): `{current_time_iq}`"
+            )
+            
+            # مراقبة سريعة للهدف والستوب والتأمين
+            current_price = candles[-1]["close"]
+            if current_price >= be_val:
+                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol_name}` عند تجاوز نقطة التأمين.")
+            if current_price >= tp:
+                send_telegram(f"🎯 *تم تحقيق الهدف (TP)* بنجاح للأصل `{symbol_name}`! 🔥")
+            elif current_price <= sl:
+                send_telegram(f"🛑 *تم ضرب الستوب (SL)* للأصل `{symbol_name}`.")
 
-# ==========================================
-# إدارة الصفقات النشطة والتأمين التلقائي (BE)
-# ==========================================
-def manage_active_positions():
-    positions = mt5.positions_get(magic=777777)
-    if positions is None or len(positions) == 0:
-        return 0
+        elif sell_trigger:
+            entry = last_c["close"]
+            sl = entry + sl_pts
+            tp = entry - tp_pts
+            be_val = entry - sl_pts
+            
+            # 1. إشعار الدخول وتفاصيل الصفقة
+            send_telegram(
+                f"🔴 *MSNR SELL - {symbol_name}*\n\n"
+                f"📌 دخول: `{entry:.{decimals}f}`\n"
+                f"🛑 ستوب: `{sl:.{decimals}f}`\n"
+                f"🛡️ تأمين: `{be_val:.{decimals}f}`\n"
+                f"🎯 هدف: `{tp:.{decimals}f}`\n"
+                f"⏰ الفريم: 5 دقائق\n"
+                f"⏱ التوقيت (العراق): `{current_time_iq}`"
+            )
+            
+            # مراقبة سريعة للهدف والستوب والتأمين
+            current_price = candles[-1]["close"]
+            if current_price <= be_val:
+                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol_name}` عند تجاوز نقطة التأمين.")
+            if current_price <= tp:
+                send_telegram(f"🎯 *تم تحقيق الهدف (TP)* بنجاح للأصل `{symbol_name}`! 🔥")
+            elif current_price >= sl:
+                send_telegram(f"🛑 *تم ضرب الستوب (SL)* للأصل `{symbol_name}`.")
 
-    for pos in positions:
-        symbol = pos.symbol
-        config = SYMBOLS.get(symbol)
-        if not config:
-            continue
+    except Exception as e:
+        print(f"Error checking {symbol_name}: {e}")
 
-        open_price = pos.price_open
-        current_price = pos.price_current
-        current_sl = pos.sl
-        ticket = pos.ticket
-        pos_type = pos.type
-
-        # تأمين الصفقة عند تحقيق المسافة المطلوبة للربح
-        if pos_type == mt5.ORDER_TYPE_BUY:
-            if (current_price - open_price) >= config["sl_pts"] and current_sl < open_price:
-                req = {
-                    "action": mt5.TRADE_ACTION_SLTP,
-                    "position": ticket,
-                    "sl": open_price + 0.1,
-                    "tp": pos.tp
-                }
-                mt5.order_send(req)
-                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol}` عند سعر الدخول.")
-
-        elif pos_type == mt5.ORDER_TYPE_SELL:
-            if (open_price - current_price) >= config["sl_pts"] and (current_sl > open_price or current_sl == 0.0):
-                req = {
-                    "action": mt5.TRADE_ACTION_SLTP,
-                    "position": ticket,
-                    "sl": open_price - 0.1,
-                    "tp": pos.tp
-                }
-                mt5.order_send(req)
-                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol}` عند سعر الدخول.")
-
-    return len(positions)
-
-# ==========================================
-# حلقة التشغيل الرئيسية
-# ==========================================
 def main():
-    if not mt5.initialize():
-        print("MT5 initialization failed.")
-        return
-
-    print("🚀 MSNR Bot is active...")
-    send_telegram("🚀 *تم تفعيل بوت MSNR بنجاح وانطلاق العمليات.*")
-
-    while True:
-        try:
-            # قفل النظام بالكامل طالما هناك صفقة نشطة واحدة
-            active_count = manage_active_positions()
-
-            if active_count == 0:
-                for symbol, settings in SYMBOLS.items():
-                    df = get_rates(symbol)
-                    if df is not None:
-                        signal = analyze_msnr(df)
-                        if signal:
-                            execute_trade(symbol, signal, settings["sl_pts"], settings["tp_pts"])
-                            break
-
-            time.sleep(15)
-        except Exception as e:
-            print(f"Error in main loop: {e}")
-            time.sleep(15)
+    check_symbol("الذهب (XAU/USD)", "XAU/USD", decimals=2)
+    check_symbol("داو جونز (US30)", "DJI", decimals=2)
+    check_symbol("ناسداك (NAS100)", "IXIC", decimals=2)
+    check_symbol("الباوند (GBP/USD)", "GBP/USD", decimals=5)
+    check_symbol("اليورو (EUR/USD)", "EUR/USD", decimals=5)
 
 if __name__ == "__main__":
     main()
