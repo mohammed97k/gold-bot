@@ -14,12 +14,11 @@ def send_telegram(msg):
 
 def main():
     try:
-        # جلب الشموع من Twelve Data
-        url = f"https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1h&outputsize=25&apikey={API_KEY}"
+        # فريم 5 دقائق للذهب
+        url = f"https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=5min&outputsize=30&apikey={API_KEY}"
         data = requests.get(url, timeout=15).json()
 
         if "values" not in data:
-            send_telegram(f"⚠️ خطأ: {data.get('message', 'تأكد من المفتاح')}")
             return
 
         raw_candles = list(reversed(data["values"]))
@@ -32,42 +31,57 @@ def main():
                 "close": float(c["close"])
             })
 
-        current_price = candles[-1]["close"]
-        send_telegram(f"🟢 *تم فحص الذهب الفوري بنجاح*\nالسعر اللحظي (XAU/USD): `{current_price:.2f}`\nجاري مراقبة الصفقات...")
-
-        # نفس إعدادات مؤشرك تماماً (Corrected 5 2)
         lookback = 5
         rr = 2.0
 
-        # فحص الشمعة المنتهية مؤخراً
+        # الشمعة المغلقة المنتهية هي candles[-2]
         last_c = candles[-2]
         prev_c = candles[-3]
 
-        # حساب القمم والقيعان لآخر 5 شموع تسبق الشمعة المنتهية
-        recent = candles[-(lookback + 2):-2]
+        # قمم وقيعان الـ 5 شموع السابقة للشمعة المنتهية
+        recent = candles[-7:-2]
         highest_high = max([c["high"] for c in recent])
         lowest_low   = min([c["low"] for c in recent])
 
-        # شرط بيع ICT المطابق للشارت تماماً
-        ict_sell = (last_c["high"] > highest_high) and (last_c["close"] < last_c["open"]) and (last_c["close"] < prev_c["high"])
+        # مستويات SNR (دعم ومقاومة لآخر 10 شموع)
+        recent_10 = candles[-12:-2]
+        snr_res = max([c["high"] for c in recent_10])
+        snr_sup = min([c["low"] for c in recent_10])
 
-        # شرط شراء ICT المطابق للشارت تماماً
+        # 1. شروط ICT
+        ict_sell = (last_c["high"] > highest_high) and (last_c["close"] < last_c["open"]) and (last_c["close"] < prev_c["high"])
         ict_buy  = (last_c["low"] < lowest_low) and (last_c["close"] > last_c["open"]) and (last_c["close"] > prev_c["low"])
 
+        # 2. شروط SNR
+        snr_sell = (last_c["high"] >= snr_res) and (last_c["close"] < snr_res) and (last_c["close"] < last_c["open"])
+        snr_buy  = (last_c["low"] <= snr_sup) and (last_c["close"] > snr_sup) and (last_c["close"] > last_c["open"])
+
+        # معالجة إشارات البيع
         if ict_sell:
             entry = last_c["close"]
-            sl = last_c["high"] + 1.0
+            sl = last_c["high"]
             tp = entry - ((sl - entry) * rr)
-            send_telegram(f"🔴 *ICT SELL - الذهب*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
-
-        elif ict_buy:
+            send_telegram(f"🔴 *إشارة ICT SELL (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+        elif snr_sell:
             entry = last_c["close"]
-            sl = last_c["low"] - 1.0
+            sl = last_c["high"]
+            tp = entry - ((sl - entry) * rr)
+            send_telegram(f"🔻 *إشارة SNR SELL (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+
+        # معالجة إشارات الشراء
+        if ict_buy:
+            entry = last_c["close"]
+            sl = last_c["low"]
             tp = entry + ((entry - sl) * rr)
-            send_telegram(f"🟢 *ICT BUY - الذهب*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`\n⏰ الفريم: 1 ساعة")
+            send_telegram(f"🟢 *إشارة ICT BUY (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+        elif snr_buy:
+            entry = last_c["close"]
+            sl = last_c["low"]
+            tp = entry + ((entry - sl) * rr)
+            send_telegram(f"🔺 *إشارة SNR BUY (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
 
     except Exception as e:
-        send_telegram(f"⚠️ خطأ أثناء الفحص: {e}")
+        pass
 
 if __name__ == "__main__":
     main()
