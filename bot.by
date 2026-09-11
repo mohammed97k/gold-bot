@@ -1,87 +1,110 @@
 import requests
+from datetime import datetime, timezone, timedelta
 
 TELEGRAM_TOKEN = "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
 CHAT_ID = "1376555014"
 API_KEY = "e12a2b0e02d4479094bd0e968e8b35e4"
+
+IRAQ_TZ = timezone(timedelta(hours=3))
+
+def get_iraq_time():
+    return datetime.now(IRAQ_TZ).strftime("%I:%M:%S %p")
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
     try:
         requests.post(url, json=payload, timeout=15)
-    except Exception as e:
-        print(f"Telegram error: {e}")
+    except Exception:
+        pass
 
-def main():
+def fetch_candles(symbol, interval, size=25):
+    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&outputsize={size}&apikey={API_KEY}"
+    res = requests.get(url, timeout=15).json()
+    if "values" not in res:
+        return None
+    raw = list(reversed(res["values"]))
+    candles = []
+    for c in raw:
+        candles.append({
+            "open": float(c["open"]),
+            "high": float(c["high"]),
+            "low": float(c["low"]),
+            "close": float(c["close"])
+        })
+    return candles
+
+def analyze_market(symbol_title, symbol_code, decimals=2):
     try:
-        # فريم 5 دقائق للذهب
-        url = f"https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=5min&outputsize=30&apikey={API_KEY}"
-        data = requests.get(url, timeout=15).json()
+        # جلب شموع 5 دقائق للدخول القناص بـ FVG
+        candles_5m = fetch_candles(symbol_code, "5min", 25)
+        # جلب شموع الساعة لتأكيد اتجاه ومستويات SNR
+        candles_1h = fetch_candles(symbol_code, "1h", 25)
 
-        if "values" not in data:
+        if not candles_5m or not candles_1h:
             return
 
-        raw_candles = list(reversed(data["values"]))
-        candles = []
-        for c in raw_candles:
-            candles.append({
-                "open": float(c["open"]),
-                "high": float(c["high"]),
-                "low": float(c["low"]),
-                "close": float(c["close"])
-            })
+        iq_time = get_iraq_time()
+        rr = 3.0
 
-        lookback = 5
-        rr = 2.0
+        # 1. منطق ICT: كشف فجوة السعر FVG على فريم 5 دقائق
+        # الشمعة المغلقة الحالية هي -2، الشمعة التي قبلها -3، والشمعة المنطلقة -4
+        c_cur = candles_5m[-2]
+        c_prev = candles_5m[-3]
+        c_past = candles_5m[-4]
 
-        # الشمعة المغلقة المنتهية هي candles[-2]
-        last_c = candles[-2]
-        prev_c = candles[-3]
+        # فجوة شرائية: قاع الشمعة الحالية أعلى من قمة الشمعة قبل السابقة
+        bullish_fvg = (c_cur["low"] > c_past["high"]) and (c_cur["close"] > c_past["high"])
+        # فجوة بيعية: قمة الشمعة الحالية أدنى من قاع الشمعة قبل السابقة
+        bearish_fvg = (c_cur["high"] < c_past["low"]) and (c_cur["close"] < c_past["low"])
 
-        # قمم وقيعان الـ 5 شموع السابقة للشمعة المنتهية
-        recent = candles[-7:-2]
-        highest_high = max([c["high"] for c in recent])
-        lowest_low   = min([c["low"] for c in recent])
-
-        # مستويات SNR (دعم ومقاومة لآخر 10 شموع)
-        recent_10 = candles[-12:-2]
-        snr_res = max([c["high"] for c in recent_10])
-        snr_sup = min([c["low"] for c in recent_10])
-
-        # 1. شروط ICT
-        ict_sell = (last_c["high"] > highest_high) and (last_c["close"] < last_c["open"]) and (last_c["close"] < prev_c["high"])
-        ict_buy  = (last_c["low"] < lowest_low) and (last_c["close"] > last_c["open"]) and (last_c["close"] > prev_c["low"])
-
-        # 2. شروط SNR
-        snr_sell = (last_c["high"] >= snr_res) and (last_c["close"] < snr_res) and (last_c["close"] < last_c["open"])
-        snr_buy  = (last_c["low"] <= snr_sup) and (last_c["close"] > snr_sup) and (last_c["close"] > last_c["open"])
-
-        # معالجة إشارات البيع
-        if ict_sell:
-            entry = last_c["close"]
-            sl = last_c["high"]
-            tp = entry - ((sl - entry) * rr)
-            send_telegram(f"🔴 *إشارة ICT SELL (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
-        elif snr_sell:
-            entry = last_c["close"]
-            sl = last_c["high"]
-            tp = entry - ((sl - entry) * rr)
-            send_telegram(f"🔻 *إشارة SNR SELL (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
-
-        # معالجة إشارات الشراء
-        if ict_buy:
-            entry = last_c["close"]
-            sl = last_c["low"]
+        if bullish_fvg:
+            entry = c_cur["close"]
+            sl = c_cur["low"]
             tp = entry + ((entry - sl) * rr)
-            send_telegram(f"🟢 *إشارة ICT BUY (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
-        elif snr_buy:
-            entry = last_c["close"]
-            sl = last_c["low"]
-            tp = entry + ((entry - sl) * rr)
-            send_telegram(f"🔺 *إشارة SNR BUY (5M)*\n\n📌 الدخول: `{entry:.2f}`\n🛑 الستوب: `{sl:.2f}`\n🎯 الهدف: `{tp:.2f}`")
+            send_telegram(f"⚡ *إشارة ICT FVG BUY (دخول سريع)*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف (300+ نقطة): `{tp:.{decimals}f}`\n⏱ التوقيت: `{iq_time}`")
+            return
 
-    except Exception as e:
+        if bearish_fvg:
+            entry = c_cur["close"]
+            sl = c_cur["high"]
+            tp = entry - ((sl - entry) * rr)
+            send_telegram(f"⚡ *إشارة ICT FVG SELL (دخول سريع)*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف (300+ نقطة): `{tp:.{decimals}f}`\n⏱ التوقيت: `{iq_time}`")
+            return
+
+        # 2. منطق SNR الساعي: كشف الارتداد الحقيقي Rejection من مستويات الساعة
+        last_1h = candles_1h[-2]
+        recent_1h = candles_1h[-12:-2]
+        res_level = max([c["high"] for c in recent_1h])
+        sup_level = min([c["low"] for c in recent_1h])
+
+        snr_sell = (last_1h["high"] >= res_level) and (last_1h["close"] < res_level) and (last_1h["close"] < last_1h["open"])
+        snr_buy  = (last_1h["low"] <= sup_level) and (last_1h["close"] > sup_level) and (last_1h["close"] > last_1h["open"])
+
+        if snr_sell:
+            entry = last_1h["close"]
+            sl = last_1h["high"]
+            tp = entry - ((sl - entry) * 2.0)
+            send_telegram(f"🛡️ *إشارة SNR REJECTION SELL*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الفريم: ساعة مع تأكيد الرفض\n⏱ التوقيت: `{iq_time}`")
+            return
+
+        if snr_buy:
+            entry = last_1h["close"]
+            sl = last_1h["low"]
+            tp = entry + ((entry - sl) * 2.0)
+            send_telegram(f"🛡️ *إشارة SNR REJECTION BUY*\n*الأصل:* {symbol_title}\n\n📌 الدخول: `{entry:.{decimals}f}`\n🛑 الستوب: `{sl:.{decimals}f}`\n🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الفريم: ساعة مع تأكيد الرفض\n⏱ التوقيت: `{iq_time}`")
+            return
+
+    except Exception:
         pass
+
+def main():
+    # فحص الذهب، المؤشرات، والعملات
+    analyze_market("الذهب (XAU/USD)", "XAU/USD", decimals=2)
+    analyze_market("داو جونز (US30)", "DJI", decimals=2)
+    analyze_market("ناسداك (NAS100)", "IXIC", decimals=2)
+    analyze_market("الباوند (GBP/USD)", "GBP/USD", decimals=5)
+    analyze_market("اليورو (EUR/USD)", "EUR/USD", decimals=5)
 
 if __name__ == "__main__":
     main()
