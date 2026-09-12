@@ -6,7 +6,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8673315879:AAEPTIMUBtZu44zlSoumjDa
 CHAT_ID = os.getenv("CHAT_ID", "1376555014")
 API_KEY = os.getenv("API_KEY", "e12a2b0e02d4479094bd0e968e8b35e4")
 
-# توقيت العراق (UTC+3)
+# توقيت العراق الرسمي (UTC+3)
 IRAQ_TZ = timezone(timedelta(hours=3))
 
 def get_iraq_time():
@@ -22,13 +22,12 @@ def send_telegram(msg):
 
 def check_symbol(symbol_name, symbol_code, decimals=2):
     try:
-        # فحص ما إذا كان اليوم عطلة أسبوعية (السبت أو الأحد) لتجنب التكرار والسبام
         now_iq = get_iraq_time()
-        if now_iq.weekday() in [5, 6]:  # 5 هو السبت، 6 هو الأحد
-            print(f"Market is closed for {symbol_name} (Weekend).")
+        # 1. فلتر إغلاق الأسواق (عطلة السبت والأحد)
+        if now_iq.weekday() in [5, 6]:
             return
 
-        url = f"https://api.twelvedata.com/time_series?symbol={symbol_code}&interval=5min&outputsize=30&apikey={API_KEY}"
+        url = f"https://api.twelvedata.com/time_series?symbol={symbol_code}&interval=5min&outputsize=40&apikey={API_KEY}"
         data = requests.get(url, timeout=15).json()
 
         if "values" not in data:
@@ -45,21 +44,18 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
                 "close": float(c["close"])
             })
 
-        if len(candles) < 10:
+        if len(candles) < 20:
             return
 
-        last_c = candles[-2]
+        last_c = candles[-2]   # شمعة التأكيد المكتملة
         
-        # التأكد أن الشمعة حديثة وليست قديمة (أقل من 20 دقيقة لتجنب التكرار القديم)
+        # 2. فلتر حداثة الشمعة لمنع تكرار الإشارات القديمة
         candle_time = datetime.strptime(last_c["datetime"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         candle_time_iq = candle_time.astimezone(IRAQ_TZ)
-        time_diff = (now_iq - candle_time_iq).total_seconds() / 60
-        
-        if time_diff > 20:
-            print(f"Skipping old candle for {symbol_name}, diff: {time_diff} mins")
+        if (now_iq - candle_time_iq).total_seconds() / 60 > 20:
             return
 
-        # قياس النقاط والأصل
+        # 3. تحديد قيم الستوب والهدف بناءً على فئة الأصل
         price_now = candles[-1]["close"]
         is_gold = (price_now > 1000 and price_now < 8000) or ("XAU" in symbol_code)
         is_index = (price_now >= 8000) or ("DJI" in symbol_code) or ("IXIC" in symbol_code)
@@ -67,18 +63,61 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
         sl_pts = 10.0 if is_gold else (100.0 if is_index else 0.0020)
         tp_pts = 25.0 if is_gold else (250.0 if is_index else 0.0050)
 
-        prev_3_c = candles[-5]
+        # 4. بناء مستويات A و V الكلاسيكية من Open/Close وقواعد Freshness
+        res_levels = []
+        sup_levels = []
 
-        # مستويات A و V الكلاسيكية
-        res_level = prev_3_c["close"] if prev_3_c["high"] == max([c["high"] for c in candles[-8:-2]]) else candles[-5]["close"]
-        sup_level = prev_3_c["close"] if prev_3_c["low"] == min([c["low"] for c in candles[-8:-2]]) else candles[-5]["close"]
+        # البحث عن القمم والقيعان التاريخية القريبة
+        for i in range(5, len(candles) - 3):
+            c_prev = candles[i-1]
+            c_curr = candles[i]
+            c_next = candles[i+1]
 
-        # شروط الدخول المنضبطة
-        buy_trigger  = (last_c["low"] <= sup_level) and (last_c["close"] > sup_level) and (last_c["close"] > last_c["open"])
-        sell_trigger = (last_c["high"] >= res_level) and (last_c["close"] < res_level) and (last_c["close"] < last_c["open"])
+            # قمة A (اعتماد أسعار الإغلاق والافتتاح وليس الذيول)
+            if c_curr["high"] > c_prev["high"] and c_curr["high"] > c_next["high"]:
+                level_price = max(c_curr["open"], c_curr["close"])
+                # فحص هل المستوى Fresh أم تم لمسه واستهلاكه
+                is_fresh = True
+                for j in range(i + 1, len(candles) - 2):
+                    if candles[j]["high"] >= level_price:
+                        is_fresh = False
+                        break
+                if is_fresh:
+                    res_levels.append(level_price)
+
+            # قاع V (اعتماد أسعار الإغلاق والافتتاح)
+            if c_curr["low"] < c_prev["low"] and c_curr["low"] < c_next["low"]:
+                level_price = min(c_curr["open"], c_curr["close"])
+                is_fresh = True
+                for j in range(i + 1, len(candles) - 2):
+                    if candles[j]["low"] <= level_price:
+                        is_fresh = False
+                        break
+                if is_fresh:
+                    sup_levels.append(level_price)
+
+        # 5. شروط التأكيد والرفض (Rejection & Close)
+        buy_trigger = False
+        sell_trigger = False
+        active_level = 0.0
+
+        if sup_levels:
+            nearest_sup = sup_levels[-1]
+            # لمس الدعم بالذيل مع إغلاق جسم الشمعة أعلى المستوى وشمعة صاعدة
+            if last_c["low"] <= nearest_sup and last_c["close"] > nearest_sup and last_c["close"] > last_c["open"]:
+                buy_trigger = True
+                active_level = nearest_sup
+
+        if res_levels and not buy_trigger:
+            nearest_res = res_levels[-1]
+            # لمس المقاومة بالذيل مع إغلاق جسم الشمعة أسفل المستوى وشمعة هابطة
+            if last_c["high"] >= nearest_res and last_c["close"] < nearest_res and last_c["close"] < last_c["open"]:
+                sell_trigger = True
+                active_level = nearest_res
 
         formatted_time = candle_time_iq.strftime("%I:%M:%S %p")
 
+        # 6. التنفيذ وإرسال التنبيه
         if buy_trigger:
             entry = last_c["close"]
             sl = entry - sl_pts
@@ -86,11 +125,12 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
             be_val = entry + sl_pts
             
             send_telegram(
-                f"🟢 *MSNR BUY - {symbol_name}*\n\n"
-                f"📌 دخول: `{entry:.{decimals}f}`\n"
-                f"🛑 ستوب: `{sl:.{decimals}f}`\n"
-                f"🛡️ تأمين: `{be_val:.{decimals}f}`\n"
-                f"🎯 هدف: `{tp:.{decimals}f}`\n"
+                f"🟢 *MSNR BUY [Fresh A+] - {symbol_name}*\n\n"
+                f"📌 سعر الدخول: `{entry:.{decimals}f}`\n"
+                f"🧱 المستوى المعتمد: `{active_level:.{decimals}f}`\n"
+                f"🛑 الستوب الهيكلي: `{sl:.{decimals}f}`\n"
+                f"🛡️ نقطة التأمين: `{be_val:.{decimals}f}`\n"
+                f"🎯 الهدف النهائي: `{tp:.{decimals}f}`\n"
                 f"⏰ الفريم: 5 دقائق\n"
                 f"⏱ التوقيت (العراق): `{formatted_time}`"
             )
@@ -102,11 +142,12 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
             be_val = entry - sl_pts
             
             send_telegram(
-                f"🔴 *MSNR SELL - {symbol_name}*\n\n"
-                f"📌 دخول: `{entry:.{decimals}f}`\n"
-                f"🛑 ستوب: `{sl:.{decimals}f}`\n"
-                f"🛡️ تأمين: `{be_val:.{decimals}f}`\n"
-                f"🎯 هدف: `{tp:.{decimals}f}`\n"
+                f"🔴 *MSNR SELL [Fresh A+] - {symbol_name}*\n\n"
+                f"📌 سعر الدخول: `{entry:.{decimals}f}`\n"
+                f"🧱 المستوى المعتمد: `{active_level:.{decimals}f}`\n"
+                f"🛑 الستوب الهيكلي: `{sl:.{decimals}f}`\n"
+                f"🛡️ نقطة التأمين: `{be_val:.{decimals}f}`\n"
+                f"🎯 الهدف النهائي: `{tp:.{decimals}f}`\n"
                 f"⏰ الفريم: 5 دقائق\n"
                 f"⏱ التوقيت (العراق): `{formatted_time}`"
             )
