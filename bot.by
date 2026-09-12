@@ -10,8 +10,7 @@ API_KEY = os.getenv("API_KEY", "e12a2b0e02d4479094bd0e968e8b35e4")
 IRAQ_TZ = timezone(timedelta(hours=3))
 
 def get_iraq_time():
-    now = datetime.now(IRAQ_TZ)
-    return now.strftime("%I:%M:%S %p")
+    return datetime.now(IRAQ_TZ)
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -23,6 +22,12 @@ def send_telegram(msg):
 
 def check_symbol(symbol_name, symbol_code, decimals=2):
     try:
+        # فحص ما إذا كان اليوم عطلة أسبوعية (السبت أو الأحد) لتجنب التكرار والسبام
+        now_iq = get_iraq_time()
+        if now_iq.weekday() in [5, 6]:  # 5 هو السبت، 6 هو الأحد
+            print(f"Market is closed for {symbol_name} (Weekend).")
+            return
+
         url = f"https://api.twelvedata.com/time_series?symbol={symbol_code}&interval=5min&outputsize=30&apikey={API_KEY}"
         data = requests.get(url, timeout=15).json()
 
@@ -33,6 +38,7 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
         candles = []
         for c in raw_candles:
             candles.append({
+                "datetime": c["datetime"],
                 "open": float(c["open"]),
                 "high": float(c["high"]),
                 "low": float(c["low"]),
@@ -42,7 +48,18 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
         if len(candles) < 10:
             return
 
-        # قياس النقاط والأصل تماماً مثل تريدنج فيو
+        last_c = candles[-2]
+        
+        # التأكد أن الشمعة حديثة وليست قديمة (أقل من 20 دقيقة لتجنب التكرار القديم)
+        candle_time = datetime.strptime(last_c["datetime"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        candle_time_iq = candle_time.astimezone(IRAQ_TZ)
+        time_diff = (now_iq - candle_time_iq).total_seconds() / 60
+        
+        if time_diff > 20:
+            print(f"Skipping old candle for {symbol_name}, diff: {time_diff} mins")
+            return
+
+        # قياس النقاط والأصل
         price_now = candles[-1]["close"]
         is_gold = (price_now > 1000 and price_now < 8000) or ("XAU" in symbol_code)
         is_index = (price_now >= 8000) or ("DJI" in symbol_code) or ("IXIC" in symbol_code)
@@ -50,7 +67,6 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
         sl_pts = 10.0 if is_gold else (100.0 if is_index else 0.0020)
         tp_pts = 25.0 if is_gold else (250.0 if is_index else 0.0050)
 
-        last_c = candles[-2]
         prev_3_c = candles[-5]
 
         # مستويات A و V الكلاسيكية
@@ -61,7 +77,7 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
         buy_trigger  = (last_c["low"] <= sup_level) and (last_c["close"] > sup_level) and (last_c["close"] > last_c["open"])
         sell_trigger = (last_c["high"] >= res_level) and (last_c["close"] < res_level) and (last_c["close"] < last_c["open"])
 
-        current_time_iq = get_iraq_time()
+        formatted_time = candle_time_iq.strftime("%I:%M:%S %p")
 
         if buy_trigger:
             entry = last_c["close"]
@@ -69,7 +85,6 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
             tp = entry + tp_pts
             be_val = entry + sl_pts
             
-            # 1. إشعار الدخول وتفاصيل الصفقة
             send_telegram(
                 f"🟢 *MSNR BUY - {symbol_name}*\n\n"
                 f"📌 دخول: `{entry:.{decimals}f}`\n"
@@ -77,17 +92,8 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
                 f"🛡️ تأمين: `{be_val:.{decimals}f}`\n"
                 f"🎯 هدف: `{tp:.{decimals}f}`\n"
                 f"⏰ الفريم: 5 دقائق\n"
-                f"⏱ التوقيت (العراق): `{current_time_iq}`"
+                f"⏱ التوقيت (العراق): `{formatted_time}`"
             )
-            
-            # مراقبة سريعة للهدف والستوب والتأمين
-            current_price = candles[-1]["close"]
-            if current_price >= be_val:
-                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol_name}` عند تجاوز نقطة التأمين.")
-            if current_price >= tp:
-                send_telegram(f"🎯 *تم تحقيق الهدف (TP)* بنجاح للأصل `{symbol_name}`! 🔥")
-            elif current_price <= sl:
-                send_telegram(f"🛑 *تم ضرب الستوب (SL)* للأصل `{symbol_name}`.")
 
         elif sell_trigger:
             entry = last_c["close"]
@@ -95,7 +101,6 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
             tp = entry - tp_pts
             be_val = entry - sl_pts
             
-            # 1. إشعار الدخول وتفاصيل الصفقة
             send_telegram(
                 f"🔴 *MSNR SELL - {symbol_name}*\n\n"
                 f"📌 دخول: `{entry:.{decimals}f}`\n"
@@ -103,17 +108,8 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
                 f"🛡️ تأمين: `{be_val:.{decimals}f}`\n"
                 f"🎯 هدف: `{tp:.{decimals}f}`\n"
                 f"⏰ الفريم: 5 دقائق\n"
-                f"⏱ التوقيت (العراق): `{current_time_iq}`"
+                f"⏱ التوقيت (العراق): `{formatted_time}`"
             )
-            
-            # مراقبة سريعة للهدف والستوب والتأمين
-            current_price = candles[-1]["close"]
-            if current_price <= be_val:
-                send_telegram(f"🛡️ *تم تأمين الصفقة (BE)* للأصل `{symbol_name}` عند تجاوز نقطة التأمين.")
-            if current_price <= tp:
-                send_telegram(f"🎯 *تم تحقيق الهدف (TP)* بنجاح للأصل `{symbol_name}`! 🔥")
-            elif current_price >= sl:
-                send_telegram(f"🛑 *تم ضرب الستوب (SL)* للأصل `{symbol_name}`.")
 
     except Exception as e:
         print(f"Error checking {symbol_name}: {e}")
