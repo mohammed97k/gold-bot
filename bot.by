@@ -1,5 +1,4 @@
 import os
-import json
 import requests
 from datetime import datetime, timezone, timedelta
 
@@ -8,7 +7,6 @@ CHAT_ID = os.getenv("CHAT_ID", "1376555014")
 API_KEY = os.getenv("API_KEY", "e12a2b0e02d4479094bd0e968e8b35e4")
 
 IRAQ_TZ = timezone(timedelta(hours=3))
-STATE_FILE = "trade_state.json"
 
 def get_iraq_time():
     return datetime.now(IRAQ_TZ)
@@ -21,34 +19,18 @@ def send_telegram(msg):
     except Exception as e:
         print(f"Telegram error: {e}")
 
-def load_state():
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def save_state(state):
-    try:
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"State save error: {e}")
-
-def check_symbol(symbol_name, symbol_code, decimals=2, state_dict=None):
+def check_symbol(symbol_name, symbol_code, decimals=2):
     try:
         now_iq = get_iraq_time()
         # إيقاف أثناء عطلة نهاية الأسبوع
         if now_iq.weekday() in [5, 6]:
-            return
+            return False
 
-        url = f"https://api.twelvedata.com/time_series?symbol={symbol_code}&interval=5min&outputsize=30&apikey={API_KEY}"
+        url = f"https://api.twelvedata.com/time_series?symbol={symbol_code}&interval=5min&outputsize=35&apikey={API_KEY}"
         data = requests.get(url, timeout=15).json()
 
         if "values" not in data:
-            return
+            return False
 
         raw_candles = list(reversed(data["values"]))
         candles = []
@@ -61,19 +43,19 @@ def check_symbol(symbol_name, symbol_code, decimals=2, state_dict=None):
                 "close": float(c["close"])
             })
 
-        if len(candles) < 10:
-            return
+        if len(candles) < 15:
+            return False
 
-        last_c = candles[-2]      # شمعة التأكيد المكتملة
-        curr_c = candles[-1]      # الشمعة الحالية للمتابعة اللحظية
+        last_c = candles[-2]  # شمعة التأكيد المغلقة حديثاً
 
-        # فلتر حداثة البيانات
+        # التأكد الصارم أن الشمعة حديثة جداً (خلال آخر 7 دقائق فقط) لمنع تكرار القديم
         candle_time = datetime.strptime(last_c["datetime"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         candle_time_iq = candle_time.astimezone(IRAQ_TZ)
-        if (now_iq - candle_time_iq).total_seconds() / 60 > 25:
-            return
+        time_diff = (now_iq - candle_time_iq).total_seconds() / 60
+        if time_diff > 7 or time_diff < 0:
+            return False
 
-        price_now = curr_c["close"]
+        price_now = candles[-1]["close"]
         is_gold = (price_now > 1000 and price_now < 8000) or ("XAU" in symbol_code)
         is_index = (price_now >= 8000) or ("DJI" in symbol_code) or ("IXIC" in symbol_code)
 
@@ -81,94 +63,40 @@ def check_symbol(symbol_name, symbol_code, decimals=2, state_dict=None):
         tp_pts = 25.0 if is_gold else (250.0 if is_index else 0.0030)
         be_trigger = sl_pts * 0.7
 
-        trade = state_dict.get(symbol_code, None)
-
-        # 1. متابعة الصفقات المفتوحة (تأمين / هدف / ستوب)
-        if trade:
-            direction = trade["dir"]
-            entry = trade["entry"]
-            sl = trade["sl"]
-            tp = trade["tp"]
-            be_val = trade["be"]
-            be_hit = trade["be_hit"]
-
-            if direction == "BUY":
-                # تحقق الهدف
-                if curr_c["high"] >= tp:
-                    send_telegram(f"🎯 *تحقق الهدف بالكامل (+250 نقطة)* للأصل `{symbol_name}`!\n📌 الخروج: `{tp:.{decimals}f}`\n⏰ الوقت: `{now_iq.strftime('%I:%M %p')}`")
-                    state_dict.pop(symbol_code, None)
-                    return
-                # ضرب الستوب أو الخروج على الدخول
-                elif curr_c["low"] <= (entry if be_hit else sl):
-                    msg = f"🛡️ *خروج تأمين (BE)* للأصل `{symbol_name}` على نقطة الدخول." if be_hit else f"🛑 *ضرب الستوب (SL)* للأصل `{symbol_name}` عند `{sl:.{decimals}f}`."
-                    send_telegram(msg)
-                    state_dict.pop(symbol_code, None)
-                    return
-                # تحقيق شرط التأمين
-                elif not be_hit and curr_c["high"] >= be_val:
-                    trade["be_hit"] = True
-                    send_telegram(f"🛡️ *تم تأمين صفقة الشراء (BE Secured)* للأصل `{symbol_name}`!\nتم نقل الوقف إلى نقطة الدخول: `{entry:.{decimals}f}`")
-
-            elif direction == "SELL":
-                # تحقق الهدف
-                if curr_c["low"] <= tp:
-                    send_telegram(f"🎯 *تحقق الهدف بالكامل (+250 نقطة)* للأصل `{symbol_name}`!\n📌 الخروج: `{tp:.{decimals}f}`\n⏰ الوقت: `{now_iq.strftime('%I:%M %p')}`")
-                    state_dict.pop(symbol_code, None)
-                    return
-                # ضرب الستوب أو الخروج على الدخول
-                elif curr_c["high"] >= (entry if be_hit else sl):
-                    msg = f"🛡️ *خروج تأمين (BE)* للأصل `{symbol_name}` على نقطة الدخول." if be_hit else f"🛑 *ضرب الستوب (SL)* للأصل `{symbol_name}` عند `{sl:.{decimals}f}`."
-                    send_telegram(msg)
-                    state_dict.pop(symbol_code, None)
-                    return
-                # تحقيق شرط التأمين
-                elif not be_hit and curr_c["low"] <= be_val:
-                    trade["be_hit"] = True
-                    send_telegram(f"🛡️ *تم تأمين صفقة البيع (BE Secured)* للأصل `{symbol_name}`!\nتم نقل الوقف إلى نقطة الدخول: `{entry:.{decimals}f}`")
-
-            return
-
-        # 2. استخراج مستويات الارتداد السريعة (High-Frequency Pivots)
+        # بناء قمم A وقيعان V بفلتر ارتدادي صلب (3 شموع) لمنع الفوضى
         res_level = None
         sup_level = None
 
-        for i in range(len(candles) - 4, 1, -1):
-            c_p = max(candles[i]["open"], candles[i]["close"])
-            if c_p > max(candles[i-1]["open"], candles[i-1]["close"]) and c_p > max(candles[i+1]["open"], candles[i+1]["close"]):
-                res_level = c_p
+        for i in range(len(candles) - 4, 3, -1):
+            body_high = max(candles[i]["open"], candles[i]["close"])
+            if (body_high > max(candles[i-1]["open"], candles[i-1]["close"]) and 
+                body_high > max(candles[i-2]["open"], candles[i-2]["close"]) and
+                body_high > max(candles[i+1]["open"], candles[i+1]["close"])):
+                res_level = body_high
                 break
 
-        for i in range(len(candles) - 4, 1, -1):
-            c_p = min(candles[i]["open"], candles[i]["close"])
-            if c_p < min(candles[i-1]["open"], candles[i-1]["close"]) and c_p < min(candles[i+1]["open"], candles[i+1]["close"]):
-                sup_level = c_p
+        for i in range(len(candles) - 4, 3, -1):
+            body_low = min(candles[i]["open"], candles[i]["close"])
+            if (body_low < min(candles[i-1]["open"], candles[i-1]["close"]) and 
+                body_low < min(candles[i-2]["open"], candles[i-2]["close"]) and
+                body_low < min(candles[i+1]["open"], candles[i+1]["close"])):
+                sup_level = body_low
                 break
 
-        # شروط اقتناص الصفقات المتكررة
-        buy_trigger = (sup_level is not None) and (last_c["low"] <= sup_level + (sl_pts * 0.2)) and (last_c["close"] > sup_level) and (last_c["close"] > last_c["open"])
-        sell_trigger = (res_level is not None) and (last_c["high"] >= res_level - (sl_pts * 0.2)) and (last_c["close"] < res_level) and (last_c["close"] < last_c["open"])
+        # شروط الرفض وتأكيد الشمعة
+        buy_trigger = (sup_level is not None) and (last_c["low"] <= sup_level) and (last_c["close"] > sup_level) and (last_c["close"] > last_c["open"])
+        sell_trigger = (res_level is not None) and (last_c["high"] >= res_level) and (last_c["close"] < res_level) and (last_c["close"] < last_c["open"])
 
         formatted_time = candle_time_iq.strftime("%I:%M %p")
 
-        # 3. إطلاق صفقة جديدة وتسجيلها
         if buy_trigger:
             entry = last_c["close"]
             sl = entry - sl_pts
             tp = entry + tp_pts
             be_val = entry + be_trigger
 
-            state_dict[symbol_code] = {
-                "dir": "BUY",
-                "entry": entry,
-                "sl": sl,
-                "tp": tp,
-                "be": be_val,
-                "be_hit": False,
-                "time": formatted_time
-            }
-
             send_telegram(
-                f"🟢 *إشارة شراء سريعة - {symbol_name}*\n"
+                f"🟢 *إشارة شراء مؤكدة - {symbol_name}*\n"
                 f"───────────────\n"
                 f"📌 سعر الدخول: `{entry:.{decimals}f}`\n"
                 f"🛑 وقف الخسارة: `{sl:.{decimals}f}`\n"
@@ -177,6 +105,7 @@ def check_symbol(symbol_name, symbol_code, decimals=2, state_dict=None):
                 f"⏰ الفريم: 5 دقائق\n"
                 f"⏱ التوقيت (العراق): `{formatted_time}`"
             )
+            return True
 
         elif sell_trigger:
             entry = last_c["close"]
@@ -184,18 +113,8 @@ def check_symbol(symbol_name, symbol_code, decimals=2, state_dict=None):
             tp = entry - tp_pts
             be_val = entry - be_trigger
 
-            state_dict[symbol_code] = {
-                "dir": "SELL",
-                "entry": entry,
-                "sl": sl,
-                "tp": tp,
-                "be": be_val,
-                "be_hit": False,
-                "time": formatted_time
-            }
-
             send_telegram(
-                f"🔴 *إشارة بيع سريعة - {symbol_name}*\n"
+                f"🔴 *إشارة بيع مؤكدة - {symbol_name}*\n"
                 f"───────────────\n"
                 f"📌 سعر الدخول: `{entry:.{decimals}f}`\n"
                 f"🛑 وقف الخسارة: `{sl:.{decimals}f}`\n"
@@ -204,18 +123,27 @@ def check_symbol(symbol_name, symbol_code, decimals=2, state_dict=None):
                 f"⏰ الفريم: 5 دقائق\n"
                 f"⏱ التوقيت (العراق): `{formatted_time}`"
             )
+            return True
+
+        return False
 
     except Exception as e:
         print(f"Error checking {symbol_name}: {e}")
+        return False
 
 def main():
-    state = load_state()
-    check_symbol("الذهب (XAU/USD)", "XAU/USD", decimals=2, state_dict=state)
-    check_symbol("داو جونز (US30)", "DJI", decimals=2, state_dict=state)
-    check_symbol("ناسداك (NAS100)", "IXIC", decimals=2, state_dict=state)
-    check_symbol("الباوند (GBP/USD)", "GBP/USD", decimals=5, state_dict=state)
-    check_symbol("اليورو (EUR/USD)", "EUR/USD", decimals=5, state_dict=state)
-    save_state(state)
+    symbols = [
+        ("الذهب (XAU/USD)", "XAU/USD", 2),
+        ("داو جونز (US30)", "DJI", 2),
+        ("ناسداك (NAS100)", "IXIC", 2),
+        ("الباوند (GBP/USD)", "GBP/USD", 5),
+        ("اليورو (EUR/USD)", "EUR/USD", 5)
+    ]
+    
+    for s_name, s_code, dec in symbols:
+        triggered = check_symbol(s_name, s_code, dec)
+        if triggered:
+            break
 
 if __name__ == "__main__":
     main()
