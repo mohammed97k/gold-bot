@@ -1,292 +1,126 @@
 import os
-import json
-import time
-import sys
 import requests
-from datetime import datetime, timezone, timedelta
+import yfinance as yf
+import pandas as pd
+import numpy as np
 
-# إجبار الطباعة المباشرة في سجلات GitHub Actions
-sys.stdout.reconfigure(line_buffering=True)
+# إعدادات تيليجرام (يمكن وضعها كـ Secrets في GitHub أو كتابتها مباشرة)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "YOUR_CHAT_ID_HERE")
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN") or "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
-CHAT_ID = os.getenv("CHAT_ID") or "1376555014"
-API_KEY = os.getenv("API_KEY") or "e12a2b0e02d4479094bd0e968e8b35e4"
-
-IRAQ_TZ = timezone(timedelta(hours=3))
-STATE_FILE = "gold_precision_state.json"
-
-def get_iraq_time():
-    return datetime.now(IRAQ_TZ)
-
-def format_iraq_time_str(dt):
-    h_24 = dt.hour
-    m = dt.minute
-    ampm = "PM" if h_24 >= 12 else "AM"
-    h_12 = h_24 % 12
-    h_disp = 12 if h_12 == 0 else h_12
-    return f"{h_disp:02d}:{m:02d} {ampm}"
-
-def send_telegram(msg):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
+def send_telegram_alert(message: str):
+    if TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE" or not TELEGRAM_BOT_TOKEN:
+        print("[!] لم يتم ضبط توكن التيليجرام. طباعة الرسالة محلياً:")
+        print(message)
+        return
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML"
+    }
     try:
-        r = requests.post(url, json=payload, timeout=15)
-        print(f"Telegram status: {r.status_code}")
-    except Exception as e:
-        print(f"Telegram error: {e}")
-
-def load_state():
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def save_state(state):
-    try:
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"State save error: {e}")
-
-def fetch_candles(symbol, interval, outputsize=100):
-    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&outputsize={outputsize}&apikey={API_KEY}"
-    try:
-        res = requests.get(url, timeout=15).json()
-        if "values" not in res:
-            print(f"[{symbol} - {interval}] API Message: {res.get('message', 'No values returned')}")
-            return []
-        raw = list(reversed(res["values"]))
-        candles = []
-        for c in raw:
-            candles.append({
-                "datetime": c["datetime"],
-                "open": float(c["open"]),
-                "high": float(c["high"]),
-                "low": float(c["low"]),
-                "close": float(c["close"])
-            })
-        return candles
-    except Exception as e:
-        print(f"Fetch error ({symbol} - {interval}): {e}")
-        return []
-
-def calc_ema(values, length):
-    if len(values) < length:
-        return [None] * len(values)
-    ema = [None] * len(values)
-    k = 2.0 / (length + 1)
-    sma = sum(values[:length]) / length
-    ema[length - 1] = sma
-    for i in range(length, len(values)):
-        ema[i] = (values[i] * k) + (ema[i - 1] * (1.0 - k))
-    return ema
-
-def calc_atr(candles, length=14):
-    trs = []
-    for i in range(len(candles)):
-        if i == 0:
-            trs.append(candles[i]["high"] - candles[i]["low"])
+        res = requests.post(url, json=payload, timeout=10)
+        if res.status_code == 200:
+            print("[✓] تم إرسال التنبيه إلى تيليجرام بنجاح.")
         else:
-            hl = candles[i]["high"] - candles[i]["low"]
-            hcp = abs(candles[i]["high"] - candles[i - 1]["close"])
-            lcp = abs(candles[i]["low"] - candles[i - 1]["close"])
-            trs.append(max(hl, hcp, lcp))
-    if len(trs) < length:
-        return [0.0] * len(trs)
-    atr = [0.0] * len(trs)
-    atr[length - 1] = sum(trs[:length]) / length
-    for i in range(length, len(trs)):
-        atr[i] = (atr[i - 1] * (length - 1) + trs[i]) / length
-    return atr
+            print(f"[!] خطأ في إرسال تيليجرام: {res.text}")
+    except Exception as e:
+        print(f"[!] استثناء أثناء الإرسال: {e}")
 
-def calc_adx_dmi(candles, length=14):
-    tr, dm_plus, dm_minus = [], [], []
-    for i in range(len(candles)):
-        if i == 0:
-            tr.append(candles[i]["high"] - candles[i]["low"])
-            dm_plus.append(0.0)
-            dm_minus.append(0.0)
-        else:
-            up_move = candles[i]["high"] - candles[i - 1]["high"]
-            down_move = candles[i - 1]["low"] - candles[i]["low"]
-            dm_plus.append(up_move if (up_move > down_move and up_move > 0) else 0.0)
-            dm_minus.append(down_move if (down_move > up_move and down_move > 0) else 0.0)
-            hl = candles[i]["high"] - candles[i]["low"]
-            hcp = abs(candles[i]["high"] - candles[i - 1]["close"])
-            lcp = abs(candles[i]["low"] - candles[i - 1]["close"])
-            tr.append(max(hl, hcp, lcp))
+def run_macro_strategy():
+    print("[*] جاري سحب بيانات الذهب وفحص نموذج الـ Macro Swing (4H + 1H)...")
+    
+    # سحب بيانات الساعة
+    df_raw = yf.download("GC=F", period="2mo", interval="1h", progress=False)
+    if df_raw.empty:
+        df_raw = yf.download("XAUUSD=X", period="2mo", interval="1h", progress=False)
 
-    if len(candles) < length * 2:
-        return 0.0, 0.0, 0.0
+    if isinstance(df_raw.columns, pd.MultiIndex):
+        df_raw.columns = df_raw.columns.get_level_values(0)
+    df_raw = df_raw.dropna()
 
-    tr_smooth = sum(tr[1:length + 1])
-    plus_smooth = sum(dm_plus[1:length + 1])
-    minus_smooth = sum(dm_minus[1:length + 1])
+    # توحيد التوقيت لبغداد
+    if df_raw.index.tz is None:
+        df_raw.index = df_raw.index.tz_localize("UTC").tz_convert("Asia/Baghdad")
+    else:
+        df_raw.index = df_raw.index.tz_convert("Asia/Baghdad")
 
-    dx_list = []
-    for i in range(length, len(candles)):
-        if i > length:
-            tr_smooth = tr_smooth - (tr_smooth / length) + tr[i]
-            plus_smooth = plus_smooth - (plus_smooth / length) + dm_plus[i]
-            minus_smooth = minus_smooth - (minus_smooth / length) + dm_minus[i]
+    # 1. بناء هيكل فريم الـ 4 ساعات
+    df_4h = df_raw.resample('4h').agg({
+        'Open': 'first',
+        'High': 'max',
+        'Low': 'min',
+        'Close': 'last'
+    }).dropna()
 
-        di_p = 100 * (plus_smooth / tr_smooth) if tr_smooth > 0 else 0
-        di_m = 100 * (minus_smooth / tr_smooth) if tr_smooth > 0 else 0
-        sum_di = di_p + di_m
-        dx = 100 * (abs(di_p - di_m) / sum_di) if sum_di > 0 else 0
-        dx_list.append((dx, di_p, di_m))
+    lookback_4h = 18
+    h4_high = df_4h['High'].rolling(lookback_4h).max().iloc[-2] # القمة السابقة المحمية
+    h4_low = df_4h['Low'].rolling(lookback_4h).min().iloc[-2]   # القاع السابق المحمي
 
-    if not dx_list:
-        return 0.0, 0.0, 0.0
+    # 2. فحص آخر شمعة مكتملة على فريم الساعة (1H)
+    last_1h = df_raw.iloc[-2]
+    c_open, c_close = last_1h['Open'], last_1h['Close']
+    c_high, c_low = last_1h['High'], last_1h['Low']
+    c_range = c_high - c_low if (c_high - c_low) > 0 else 0.1
+    c_time = last_1h.name.strftime('%Y-%m-%d %H:%M')
 
-    adx = sum(d[0] for d in dx_list[:length]) / min(length, len(dx_list))
-    return dx_list[-1][1], dx_list[-1][2], adx
+    upper_wick = c_high - max(c_open, c_close)
+    lower_wick = min(c_open, c_close) - c_low
 
-def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
-    try:
-        now_iq = get_iraq_time()
-        if now_iq.weekday() in [5, 6]:
-            print(f"[{symbol_name}] السوق مغلق (عطلة نهاية الأسبوع).")
-            return
+    rr = 2.0
+    signal = None
 
-        print(f"--- بدء فحص {symbol_name} ({symbol_code}) ---")
+    # شرط الشراء المؤسسي (ارتداد ورفض من قاع 4H)
+    if (c_low <= h4_low + 1.5) and (lower_wick / c_range >= 0.38) and (c_close > c_open):
+        entry = c_close
+        sl = c_low - 1.2
+        risk = entry - sl
+        if 6.0 <= risk <= 13.0: # نطاق الستوب: 60 إلى 130 نقطة
+            tp = entry + (risk * rr)
+            signal = {
+                "type": "BUY 🟢",
+                "entry": entry,
+                "sl": sl,
+                "tp": tp,
+                "risk_pips": int(risk * 10),
+                "reward_pips": int((tp - entry) * 10),
+                "time": c_time
+            }
 
-        c_5m = fetch_candles(symbol_code, "5min", outputsize=40)
-        time.sleep(1.2)
-        c_15m = fetch_candles(symbol_code, "15min", outputsize=40)
-        time.sleep(1.2)
-        c_1h = fetch_candles(symbol_code, "1h", outputsize=100)
+    # شرط البيع المؤسسي (ارتداد ورفض من قمة 4H)
+    elif (c_high >= h4_high - 1.5) and (upper_wick / c_range >= 0.38) and (c_close < c_open):
+        entry = c_close
+        sl = c_high + 1.2
+        risk = sl - entry
+        if 6.0 <= risk <= 13.0: # نطاق الستوب: 60 إلى 130 نقطة
+            tp = entry - (risk * rr)
+            signal = {
+                "type": "SELL 🔴",
+                "entry": entry,
+                "sl": sl,
+                "tp": tp,
+                "risk_pips": int(risk * 10),
+                "reward_pips": int((entry - tp) * 10),
+                "time": c_time
+            }
 
-        if len(c_5m) < 20 or len(c_15m) < 30 or len(c_1h) < 60:
-            print(f"[{symbol_name}] تم التخطي: البيانات غير مكتملة.")
-            return
-
-        curr_5m = c_5m[-1]
-        last_5m = c_5m[-2]
-
-        c_dt = datetime.strptime(last_5m["datetime"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        candle_time_iq = c_dt.astimezone(IRAQ_TZ)
-        time_str = format_iraq_time_str(candle_time_iq)
-
-        # 1. متابعة الصفقات القائمة
-        trade = state_dict.get(symbol_code)
-        if trade:
-            direction = trade["dir"]
-            entry = trade["entry"]
-            sl = trade["sl"]
-            tp = trade["tp"]
-            be = trade["be"]
-            be_hit = trade["be_hit"]
-            o_time = trade["open_time"]
-            close_t_str = format_iraq_time_str(now_iq)
-
-            if direction == 1:
-                if curr_5m["high"] >= tp:
-                    send_telegram(f"🎯 *تحقق الهدف بالكامل (TP)*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
-                    state_dict.pop(symbol_code, None)
-                    return
-                elif curr_5m["low"] <= (entry if be_hit else sl):
-                    res_txt = "خروج تأمين (BE)" if be_hit else "ضرب الستوب (SL)"
-                    send_telegram(f"🛑 *{res_txt}*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🛑 الوقف: `{entry if be_hit else sl:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
-                    state_dict.pop(symbol_code, None)
-                    return
-                elif not be_hit and curr_5m["high"] >= be:
-                    trade["be_hit"] = True
-                    send_telegram(f"🛡️ *تأمين الصفقة (BE Secured)* للأصل `{symbol_name}`!\nتم رفع الستوب إلى نقطة الدخول: `{entry:.{decimals}f}`")
-
-            elif direction == -1:
-                if curr_5m["low"] <= tp:
-                    send_telegram(f"🎯 *تحقق الهدف بالكامل (TP)*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
-                    state_dict.pop(symbol_code, None)
-                    return
-                elif curr_5m["high"] >= (entry if be_hit else sl):
-                    res_txt = "خروج تأمين (BE)" if be_hit else "ضرب الستوب (SL)"
-                    send_telegram(f"🛑 *{res_txt}*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🛑 الوقف: `{entry if be_hit else sl:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
-                    state_dict.pop(symbol_code, None)
-                    return
-                elif not be_hit and curr_5m["low"] <= be:
-                    trade["be_hit"] = True
-                    send_telegram(f"🛡️ *تأمين الصفقة (BE Secured)* للأصل `{symbol_name}`!\nتم نقل الستوب إلى نقطة الدخول: `{entry:.{decimals}f}`")
-            return
-
-        # 2. حساب المؤشرات الفنية
-        h_closes = [c["close"] for c in c_1h]
-        h_e50 = calc_ema(h_closes, 50)[-2]
-        bull_bias = (h_e50 is not None) and (h_closes[-2] > h_e50)
-        bear_bias = (h_e50 is not None) and (h_closes[-2] < h_e50)
-
-        m15_closes = [c["close"] for c in c_15m]
-        m15_e20 = calc_ema(m15_closes, 20)[-2]
-        m15_bull = (m15_e20 is not None) and (m15_closes[-2] > m15_e20)
-        m15_bear = (m15_e20 is not None) and (m15_closes[-2] < m15_e20)
-
-        c5_closes = [c["close"] for c in c_5m]
-        idx = len(c_5m) - 2
-        c5_e20 = calc_ema(c5_closes, 20)[idx]
-        atr_val = calc_atr(c_5m, 14)[idx]
-        di_plus, di_minus, adx = calc_adx_dmi(c_5m, 14)
-
-        close_5m = last_5m["close"]
-        open_5m = last_5m["open"]
-        high_5m = last_5m["high"]
-        low_5m = last_5m["low"]
-
-        local_bull = (c5_e20 is not None) and (close_5m > c5_e20)
-        local_bear = (c5_e20 is not None) and (close_5m < c5_e20)
-
-        liq_len = 8
-        prev_low = min(c["low"] for c in c_5m[idx - liq_len:idx])
-        prev_high = max(c["high"] for c in c_5m[idx - liq_len:idx])
-
-        bull_shift = (low_5m < prev_low) and (close_5m > prev_low)
-        bear_shift = (high_5m > prev_high) and (close_5m < prev_high)
-
-        long_signal = bull_bias and m15_bull and local_bull and bull_shift and (close_5m > open_5m)
-        short_signal = bear_bias and m15_bear and local_bear and bear_shift and (close_5m < open_5m)
-
-        is_gold = "XAU" in symbol_code
-        min_sl = 1.5 if is_gold else 1.0
-        max_sl = 15.0 if is_gold else 10.0
-
-        if long_signal:
-            long_sl = low_5m - (atr_val * 0.10)
-            risk = close_5m - long_sl
-            if min_sl <= risk <= max_sl:
-                long_tp = close_5m + (risk * 2.0)
-                long_be = close_5m + (risk * 1.0)
-                state_dict[symbol_code] = {"dir": 1, "entry": close_5m, "sl": long_sl, "tp": long_tp, "be": long_be, "be_hit": False, "open_time": time_str}
-                send_telegram(f"🟢 *إشارة شراء مؤكدة (Gold Precision)*\nالأصل: `{symbol_name}`\n────────────────\n📌 سعر الدخول: `{close_5m:.{decimals}f}`\n🛑 وقف الخسارة (SL): `{long_sl:.{decimals}f}`\n🛡️ نقطة التأمين (BE): `{long_be:.{decimals}f}`\n🎯 الهدف (TP) [1:2]: `{long_tp:.{decimals}f}`\n⏰ الفريم: 5 دقائق\n⏱ التوقيت (العراق): `{time_str}`")
-
-        elif short_signal:
-            short_sl = high_5m + (atr_val * 0.10)
-            risk = short_sl - close_5m
-            if min_sl <= risk <= max_sl:
-                short_tp = close_5m - (risk * 2.0)
-                short_be = close_5m - (risk * 1.0)
-                state_dict[symbol_code] = {"dir": -1, "entry": close_5m, "sl": short_sl, "tp": short_tp, "be": short_be, "be_hit": False, "open_time": time_str}
-                send_telegram(f"🔴 *إشارة بيع مؤكدة (Gold Precision)*\nالأصل: `{symbol_name}`\n────────────────\n📌 سعر الدخول: `{close_5m:.{decimals}f}`\n🛑 وقف الخسارة (SL): `{short_sl:.{decimals}f}`\n🛡️ نقطة التأمين (BE): `{short_be:.{decimals}f}`\n🎯 الهدف (TP) [1:2]: `{short_tp:.{decimals}f}`\n⏰ الفريم: 5 دقائق\n⏱ التوقيت (العراق): `{time_str}`")
-
-        print(f"[{symbol_name}] تم الفحص بنجاح بدون إشارات جديدة.")
-
-    except Exception as err:
-        print(f"Error processing {symbol_name}: {err}")
-
-def main():
-    print(f"=== بدء الفحص: {get_iraq_time().strftime('%Y-%m-%d %I:%M:%S %p')} (بغداد) ===")
-    state = load_state()
-    symbols = [
-        ("الذهب (XAU/USD)", "XAU/USD", 2),
-        ("داو جونز (US30)", "DIA", 2),
-        ("ناسداك (NAS100)", "QQQ", 2)
-    ]
-    for s_name, s_code, dec in symbols:
-        run_gold_precision(s_name, s_code, dec, state)
-        time.sleep(2.0)
-    save_state(state)
-    print("=== اكتمل الفحص لجميع الأصول ===")
+    if signal:
+        msg = (
+            f"🔔 <b>إشارة تداول جديدة: الذهب (XAU/USD)</b>\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>النوع:</b> {signal['type']}\n"
+            f"💵 <b>سعر الدخول:</b> {signal['entry']:.2f}\n"
+            f"🛑 <b>وقف الخسارة (SL):</b> {signal['sl']:.2f} ({signal['risk_pips']} نقطة)\n"
+            f"🎯 <b>الهدف (TP):</b> {signal['tp']:.2f} ({signal['reward_pips']} نقطة)\n"
+            f"⚖️ <b>نسبة العائد للمخاطرة:</b> 1:2\n"
+            f"🕒 <b>توقيت الشمعة:</b> {signal['time']} بتوقيت بغداد\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"🛡️ <i>النموذج: Macro Swing (4H Level + 1H Wick Rejection)</i>"
+        )
+        send_telegram_alert(msg)
+    else:
+        print("[i] لا توجد فرصة مطابقة لشروط الـ Macro Swing في الشمعة الأخيرة.")
 
 if __name__ == "__main__":
-    main()
+    run_macro_strategy()
