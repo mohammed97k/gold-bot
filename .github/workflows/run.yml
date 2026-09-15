@@ -1,15 +1,13 @@
-name: Gold Bot Macro Runner
+name: Generate Real Candlestick PDFs
 
 on:
-  schedule:
-    - cron: '5 * * * *' # يعمل كل ساعة عند الدقيقة 5 (فور إغلاق شمعة الساعة)
   workflow_dispatch:
 
 jobs:
-  run-bot:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -18,10 +16,15 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install yfinance pandas requests
+        run: |
+          pip install --upgrade pip
+          pip install yfinance pandas numpy matplotlib reportlab
 
-      - name: Run Bot
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python -u bot.by
+      - name: Run PDF Candlestick Generator
+        run: python -u export_candles_pdf.py
+
+      - name: Upload Real Candlestick PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: gold-real-candles-pack
+          path: gold_pdf_candles/
