@@ -2,7 +2,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-print("جاري فحص Mohamed Gemini v3 (تأكيد الكسر + التأمين)...")
+print("جاري فحص Mohamed Gemini v4 (هدف 1:1.5 + متنفس إعادة الاختبار)...")
 
 df = yf.download("GC=F", period="1mo", interval="5m")
 if isinstance(df.columns, pd.MultiIndex):
@@ -33,66 +33,53 @@ setup_bull = session_filter & trend_bull & liq_bull & (df['Close'] > df['Open'])
 setup_bear = session_filter & trend_bear & liq_bear & (df['Close'] < df['Open'])
 
 trades = []
-rr = 2.0
+rr = 1.5  # هدف واقعي وسريع للذهب
 
 for i in range(len(df) - 50):
-    # شراء: بعد شمعة الرفض، الشمعة التالية تخترق قمتها
     if setup_bull.iloc[i]:
         trigger = df.iloc[i+1]
-        if trigger['High'] > df['High'].iloc[i]:
-            entry = df['High'].iloc[i]
+        if trigger['Close'] > df['High'].iloc[i]:  # إغلاق شمعة التأكيد فوق القمة
+            entry = trigger['Close']
             sl = df['Low'].iloc[i] - 0.5
             risk = entry - sl
             if 1.5 <= risk <= 6.0:
                 tp = entry + (risk * rr)
-                be = entry + (risk * 1.0)
-                future = df.iloc[i+2:i+45]
+                future = df.iloc[i+2:i+40]
                 
-                be_active = False
                 trade_res = None
                 for _, bar in future.iterrows():
-                    if bar['High'] >= be:
-                        be_active = True
                     if bar['High'] >= tp:
                         trade_res = 1
                         break
-                    stop_level = entry if be_active else sl
-                    if bar['Low'] <= stop_level:
-                        trade_res = 0.5 if be_active else 0
+                    if bar['Low'] <= sl:
+                        trade_res = 0
                         break
                 if trade_res is not None:
                     trades.append(trade_res)
 
-    # بيع: بعد شمعة الرفض، الشمعة التالية تكسر قاعها
     elif setup_bear.iloc[i]:
         trigger = df.iloc[i+1]
-        if trigger['Low'] < df['Low'].iloc[i]:
-            entry = df['Low'].iloc[i]
+        if trigger['Close'] < df['Low'].iloc[i]:  # إغلاق شمعة التأكيد تحت القاع
+            entry = trigger['Close']
             sl = df['High'].iloc[i] + 0.5
             risk = sl - entry
             if 1.5 <= risk <= 6.0:
                 tp = entry - (risk * rr)
-                be = entry - (risk * 1.0)
-                future = df.iloc[i+2:i+45]
+                future = df.iloc[i+2:i+40]
                 
-                be_active = False
                 trade_res = None
                 for _, bar in future.iterrows():
-                    if bar['Low'] <= be:
-                        be_active = True
                     if bar['Low'] <= tp:
                         trade_res = 1
                         break
-                    stop_level = entry if be_active else sl
-                    if bar['High'] >= stop_level:
-                        trade_res = 0.5 if be_active else 0
+                    if bar['High'] >= sl:
+                        trade_res = 0
                         break
                 if trade_res is not None:
                     trades.append(trade_res)
 
 if trades:
     wins = trades.count(1)
-    bes = trades.count(0.5)
     losses = trades.count(0)
     total = len(trades)
     winrate = (wins / total) * 100
@@ -101,8 +88,7 @@ if trades:
     print("\n===============================")
     print(f"إجمالي الصفقات: {total}")
     print(f"معدل الصفقات اليومي: {daily_trades:.1f} صفقة/يوم")
-    print(f"أهداف محققة (TP): {wins} | تأمين خروج بدون خسارة (BE): {bes} | ستوب (SL): {losses}")
-    print(f"نسبة الفوز الكامل: {winrate:.1f}%")
-    print(f"نسبة عدم الخسارة (Win + BE): {((wins + bes) / total) * 100:.1f}%")
+    print(f"أهداف محققة (TP): {wins} | ستوب (SL): {losses}")
+    print(f"نسبة الفوز (Win Rate): {winrate:.1f}%")
     print(f"صافي العائد: +{net_r:.1f}R")
     print("===============================")
