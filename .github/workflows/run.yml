@@ -2,7 +2,6 @@ name: Gold Scanner
 
 on:
   schedule:
-    # تشغيل تلقائي كل 5 دقائق على مدار الساعة
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
@@ -21,5 +20,4 @@ jobs:
         run: pip install requests
 
       - name: Run scanner
-run: python -u bot.by
-
+        run: python -u bot.by
