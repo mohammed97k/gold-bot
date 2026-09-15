@@ -2,38 +2,53 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-print("جاري تشريح استراتيجية MSNR المتقدمة على الذهب...")
+print("جاري تشريح MSNR المؤسسي (الاتجاه 4H + مناطق 1H + تأكيد 30M)...")
 
-# سحب 5000+ شمعة على فريم 5 دقائق
-df = yf.download("GC=F", period="1mo", interval="5m")
-if df.empty:
-    df = yf.download("XAUUSD=X", period="1mo", interval="5m")
+# سحب بيانات الفريمات الثلاثة
+df_4h = yf.download("GC=F", period="2mo", interval="1h")  # سنبني منها الـ 4 ساعات لضمان الدقة
+df_1h = yf.download("GC=F", period="1mo", interval="1h")
+df_30m = yf.download("GC=F", period="1mo", interval="30m")
 
-if isinstance(df.columns, pd.MultiIndex):
-    df.columns = df.columns.get_level_values(0)
+if df_1h.empty or df_30m.empty:
+    df_4h = yf.download("XAUUSD=X", period="2mo", interval="1h")
+    df_1h = yf.download("XAUUSD=X", period="1mo", interval="1h")
+    df_30m = yf.download("XAUUSD=X", period="1mo", interval="30m")
 
-# توحيد التوقيت لبغداد
-if df.index.tz is None:
-    df.index = df.index.tz_localize("UTC").tz_convert("Asia/Baghdad")
-else:
-    df.index = df.index.tz_convert("Asia/Baghdad")
+for d in [df_4h, df_1h, df_30m]:
+    if isinstance(d.columns, pd.MultiIndex):
+        d.columns = d.columns.get_level_values(0)
+    if d.index.tz is None:
+        d.index = d.index.tz_localize("UTC").tz_convert("Asia/Baghdad")
+    else:
+        d.index = d.index.tz_convert("Asia/Baghdad")
 
-# ساعات السيولة العالية (لندن ونيويورك: 10:00 صباحاً إلى 08:00 مساءً)
+# 1. بناء اتجاه فريم الـ 4 ساعات (4H Trend)
+df_4h_res = df_4h.resample('4h').agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'}).dropna()
+df_4h_res['ema50_4h'] = df_4h_res['Close'].ewm(span=50, adjust=False).mean()
+df_4h_res['trend_4h'] = np.where(df_4h_res['Close'] > df_4h_res['ema50_4h'], 1, -1)
+
+# 2. تحديد قمم وقيعان الساعة (1H Support & Resistance)
+lookback_1h = 24
+df_1h['h1_high'] = df_1h['High'].rolling(lookback_1h).max().shift(1)
+df_1h['h1_low'] = df_1h['Low'].rolling(lookback_1h).min().shift(1)
+
+# دمج اتجاه 4H ومستويات 1H مع فريم 30M
+df = pd.merge_asof(df_30m.sort_index(), df_1h[['h1_high', 'h1_low']].sort_index(), left_index=True, right_index=True)
+df = pd.merge_asof(df.sort_index(), df_4h_res[['trend_4h']].sort_index(), left_index=True, right_index=True)
+
+df['range'] = df['High'] - df['Low']
+df['upper_wick'] = df['High'] - df[['Open', 'Close']].max(axis=1)
+df['lower_wick'] = df[['Open', 'Close']].min(axis=1) - df['Low']
+
+# ساعات العمل (لندن ونيويورك: 10 ص إلى 8 م بتوقيت بغداد)
 session = (df.index.hour >= 10) & (df.index.hour <= 20)
 
-# استخراج القمم والقيعان البنيوية (Swing High / Swing Low) لنطاق 15 شمعة
-lookback = 15
-df['swing_high'] = df['High'].rolling(lookback).max().shift(1)
-df['swing_low'] = df['Low'].rolling(lookback).min().shift(1)
+# شروط الدخول المتوافقة مع اتجاه الـ 4 ساعات:
+# شراء: اتجاه 4H صاعد + كسر قاع الساعة بذيل ارتدادي وإغلاق أخضر
+long_cond = session & (df['trend_4h'] == 1) & (df['Low'] < df['h1_low']) & (df['Close'] > df['h1_low']) & (df['lower_wick'] / df['range'] >= 0.38) & (df['Close'] > df['Open'])
 
-# شروط MSNR:
-# 1. كسر سائل للقاع ثم إغلاق أعلاه (MSNR Bullish Sweep)
-bull_sweep = (df['Low'] < df['swing_low']) & (df['Close'] > df['swing_low']) & (df['Close'] > df['Open'])
-# 2. كسر سائل للقمة ثم إغلاق أدناها (MSNR Bearish Sweep)
-bear_sweep = (df['High'] > df['swing_high']) & (df['Close'] < df['swing_high']) & (df['Close'] < df['Open'])
-
-long_cond = session & bull_sweep
-short_cond = session & bear_sweep
+# بيع: اتجاه 4H هابط + كسر قمة الساعة بذيل ارتدادي وإغلاق أحمر
+short_cond = session & (df['trend_4h'] == -1) & (df['High'] > df['h1_high']) & (df['Close'] < df['h1_high']) & (df['upper_wick'] / df['range'] >= 0.38) & (df['Close'] < df['Open'])
 
 trades = []
 rr = 2.0
@@ -41,10 +56,9 @@ rr = 2.0
 for i in range(len(df) - 40):
     if long_cond.iloc[i]:
         entry = df['Close'].iloc[i]
-        sl = df['Low'].iloc[i] - 0.5
+        sl = df['Low'].iloc[i] - 1.0
         risk = entry - sl
-        # فلتر المخاطرة المعقولة (بين 2.0$ و 8.0$ على فريم 5 دقائق)
-        if 2.0 <= risk <= 8.0:
+        if 5.0 <= risk <= 13.0:  # نطاق الستوب 50 إلى 130 نقطة
             tp = entry + (risk * rr)
             future = df.iloc[i+1:i+40]
             hit_tp = (future['High'] >= tp).any()
@@ -58,9 +72,9 @@ for i in range(len(df) - 40):
 
     elif short_cond.iloc[i]:
         entry = df['Close'].iloc[i]
-        sl = df['High'].iloc[i] + 0.5
+        sl = df['High'].iloc[i] + 1.0
         risk = sl - entry
-        if 2.0 <= risk <= 8.0:
+        if 5.0 <= risk <= 13.0:
             tp = entry - (risk * rr)
             future = df.iloc[i+1:i+40]
             hit_tp = (future['Low'] <= tp).any()
@@ -79,11 +93,11 @@ if trades:
     daily_trades = total / 22
     net_r = (wins * rr) - (total - wins)
     print("\n===============================")
-    print(f"إجمالي صفقات MSNR: {total}")
+    print(f"إجمالي صفقات MSNR المؤسسية: {total}")
     print(f"معدل الصفقات اليومي: {daily_trades:.2f} صفقة/يوم")
     print(f"الصفقات الرابحة: {wins} | الصفقات الخاسرة: {total - wins}")
     print(f"نسبة الفوز (Win Rate): {winrate:.1f}%")
     print(f"صافي العائد: +{net_r:.1f}R")
     print("===============================")
 else:
-    print("لم يتم العثور على صفقات تطابق الشروط.")
+    print("لم تتطابق أي فرصة مع اتجاه 4H الصارم ومستويات 1H في هذه الفترة.")
