@@ -17,7 +17,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests yfinance pandas numpy
 
       - name: Run scanner
-        run: python -u bot.by
+        run: python -u data_miner.py
