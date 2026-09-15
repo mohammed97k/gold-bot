@@ -7,7 +7,6 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Image as RLImage, PageBreak
 import os
 
-# خطة التوليد: 15 شمعة بيانية حقيقية لكل صفحة
 timeframes_plan = {
     "Monthly": {"interval": "1mo", "period": "5y",  "pages": 1},
     "Weekly":  {"interval": "1wk", "period": "2y",  "pages": 2},
@@ -25,12 +24,12 @@ os.makedirs("temp_pages", exist_ok=True)
 CANDLES_PER_PAGE = 15
 
 def render_candlestick_page(df_chunk, page_num, total_pages, tf_name, img_path):
-    fig, ax = plt.subplots(figsize=(11.5, 6.2), dpi=200)
-    fig.patch.set_facecolor('#0B0F19')
-    ax.set_facecolor('#0B0F19')
+    fig, ax = plt.subplots(figsize=(11.5, 6.2), dpi=180)
+    fig.patch.set_facecolor('#080D1A')
+    ax.set_facecolor('#080D1A')
 
     width = 0.58
-    wick_width = 2.2
+    wick_width = 2.0
 
     for i in range(len(df_chunk)):
         row = df_chunk.iloc[i]
@@ -39,18 +38,14 @@ def render_candlestick_page(df_chunk, page_num, total_pages, tf_name, img_path):
         is_bull = c_close >= c_open
         color = '#10B981' if is_bull else '#EF4444'
 
-        # رسم الذيل الحقيقي العريض
         ax.plot([i, i], [c_low, c_high], color=color, linewidth=wick_width, zorder=2)
-        
-        # رسم جسم الشمعة البياني الصلب
         lower = min(c_open, c_close)
         height = max(abs(c_close - c_open), 0.15)
         rect = patches.Rectangle((i - width/2, lower), width, height, facecolor=color, edgecolor=color, zorder=3)
         ax.add_patch(rect)
 
-        # كتابة أعلى وأدنى سعر فوق وتحت الذيل
-        ax.text(i, c_high + 0.25, f"{c_high:.1f}", color='#94A3B8', fontsize=6.5, ha='center', va='bottom')
-        ax.text(i, c_low - 0.25, f"{c_low:.1f}", color='#94A3B8', fontsize=6.5, ha='center', va='top')
+        ax.text(i, c_high + 0.3, f"{c_high:.1f}", color='#94A3B8', fontsize=6.5, ha='center', va='bottom')
+        ax.text(i, c_low - 0.3, f"{c_low:.1f}", color='#94A3B8', fontsize=6.5, ha='center', va='top')
 
     ax.set_xlim(-0.8, len(df_chunk) - 0.2)
     ax.grid(True, color='#1E293B', linestyle='--', linewidth=0.6, alpha=0.8)
@@ -65,7 +60,7 @@ def render_candlestick_page(df_chunk, page_num, total_pages, tf_name, img_path):
 
     ax.set_xticks(range(len(df_chunk)))
     ax.set_xticklabels(labels, rotation=20, ha='right', color='#CBD5E1', fontsize=7.5)
-    ax.set_ylabel("Gold Price (USD)", color='#CBD5E1', fontsize=10)
+    ax.set_ylabel("Price (USD)", color='#CBD5E1', fontsize=10)
     ax.set_title(f"Gold (XAUUSD) - {tf_name} | Page {page_num} of {total_pages} (15 Pure Candlesticks)", 
                  fontsize=12, fontweight='bold', color='#F8FAFC', pad=10)
 
@@ -75,7 +70,7 @@ def render_candlestick_page(df_chunk, page_num, total_pages, tf_name, img_path):
 
 for tf_name, cfg in timeframes_plan.items():
     total_candles = cfg["pages"] * CANDLES_PER_PAGE
-    print(f"جاري جلب ورسم {total_candles} شمعة لفريم {tf_name}...")
+    print(f"Drawing {total_candles} candles for {tf_name}...")
     
     df = yf.download("GC=F", period=cfg["period"], interval=cfg["interval"], progress=False)
     if df.empty:
@@ -103,6 +98,6 @@ for tf_name, cfg in timeframes_plan.items():
             story.append(PageBreak())
 
     doc.build(story)
-    print(f"تم إنشاء ملف {pdf_path} كشارتات شموع حقيقية!")
+    print(f"Generated {pdf_path}")
 
-print("اكتملت جميع ملفات الشموع الرسومية بنجاح!")
+print("All visual PDFs successfully generated.")
