@@ -1,32 +1,82 @@
 import yfinance as yf
 import pandas as pd
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import SimpleDocTemplate, Image as RLImage, PageBreak
 import os
-import datetime
 
-timeframes = {
-    "Monthly": {"interval": "1mo", "period": "5y"},
-    "Weekly":  {"interval": "1wk", "period": "2y"},
-    "Daily":   {"interval": "1d",  "period": "1y"},
-    "1H":      {"interval": "1h",  "period": "1mo"},
-    "30M":     {"interval": "30m", "period": "1mo"},
-    "15M":     {"interval": "15m", "period": "1mo"},
-    "5M":      {"interval": "5m",  "period": "1mo"},
+# خطة التوليد: 15 شمعة بيانية حقيقية لكل صفحة
+timeframes_plan = {
+    "Monthly": {"interval": "1mo", "period": "5y",  "pages": 1},
+    "Weekly":  {"interval": "1wk", "period": "2y",  "pages": 2},
+    "Daily":   {"interval": "1d",  "period": "1y",  "pages": 4},
+    "4H":      {"interval": "1h",  "period": "2mo", "pages": 10, "resample": "4h"},
+    "1H":      {"interval": "1h",  "period": "2mo", "pages": 15},
+    "30M":     {"interval": "30m", "period": "1mo", "pages": 20},
+    "15M":     {"interval": "15m", "period": "1mo", "pages": 25},
+    "5M":      {"interval": "5m",  "period": "1mo", "pages": 30},
 }
 
 os.makedirs("gold_pdf_candles", exist_ok=True)
-styles = getSampleStyleSheet()
+os.makedirs("temp_pages", exist_ok=True)
 
-tbl_hdr = ParagraphStyle('Hdr', fontName='Helvetica-Bold', fontSize=8, textColor=colors.white, alignment=1)
-tbl_cell = ParagraphStyle('Cell', fontName='Helvetica', fontSize=7.5, textColor=colors.HexColor('#1E293B'), alignment=1)
-bull_cell = ParagraphStyle('Bull', fontName='Helvetica-Bold', fontSize=7.5, textColor=colors.HexColor('#166534'), alignment=1)
-bear_cell = ParagraphStyle('Bear', fontName='Helvetica-Bold', fontSize=7.5, textColor=colors.HexColor('#991B1B'), alignment=1)
+CANDLES_PER_PAGE = 15
 
-for tf_name, cfg in timeframes.items():
-    print(f"جاري سحب شموع فريم {tf_name} وتوليد الـ PDF...")
+def render_candlestick_page(df_chunk, page_num, total_pages, tf_name, img_path):
+    fig, ax = plt.subplots(figsize=(11.5, 6.2), dpi=200)
+    fig.patch.set_facecolor('#0B0F19')
+    ax.set_facecolor('#0B0F19')
+
+    width = 0.58
+    wick_width = 2.2
+
+    for i in range(len(df_chunk)):
+        row = df_chunk.iloc[i]
+        c_open, c_close = row['Open'], row['Close']
+        c_high, c_low = row['High'], row['Low']
+        is_bull = c_close >= c_open
+        color = '#10B981' if is_bull else '#EF4444'
+
+        # رسم الذيل الحقيقي العريض
+        ax.plot([i, i], [c_low, c_high], color=color, linewidth=wick_width, zorder=2)
+        
+        # رسم جسم الشمعة البياني الصلب
+        lower = min(c_open, c_close)
+        height = max(abs(c_close - c_open), 0.15)
+        rect = patches.Rectangle((i - width/2, lower), width, height, facecolor=color, edgecolor=color, zorder=3)
+        ax.add_patch(rect)
+
+        # كتابة أعلى وأدنى سعر فوق وتحت الذيل
+        ax.text(i, c_high + 0.25, f"{c_high:.1f}", color='#94A3B8', fontsize=6.5, ha='center', va='bottom')
+        ax.text(i, c_low - 0.25, f"{c_low:.1f}", color='#94A3B8', fontsize=6.5, ha='center', va='top')
+
+    ax.set_xlim(-0.8, len(df_chunk) - 0.2)
+    ax.grid(True, color='#1E293B', linestyle='--', linewidth=0.6, alpha=0.8)
+    ax.tick_params(colors='#CBD5E1', labelsize=8.5)
+
+    labels = []
+    for idx in df_chunk.index:
+        if hasattr(idx, 'strftime'):
+            labels.append(idx.strftime('%m/%d %H:%M') if tf_name in ['5M','15M','30M','1H'] else idx.strftime('%Y-%m-%d'))
+        else:
+            labels.append(str(idx)[:10])
+
+    ax.set_xticks(range(len(df_chunk)))
+    ax.set_xticklabels(labels, rotation=20, ha='right', color='#CBD5E1', fontsize=7.5)
+    ax.set_ylabel("Gold Price (USD)", color='#CBD5E1', fontsize=10)
+    ax.set_title(f"Gold (XAUUSD) - {tf_name} | Page {page_num} of {total_pages} (15 Pure Candlesticks)", 
+                 fontsize=12, fontweight='bold', color='#F8FAFC', pad=10)
+
+    plt.tight_layout()
+    plt.savefig(img_path, facecolor=fig.get_facecolor(), edgecolor='none')
+    plt.close()
+
+for tf_name, cfg in timeframes_plan.items():
+    total_candles = cfg["pages"] * CANDLES_PER_PAGE
+    print(f"جاري جلب ورسم {total_candles} شمعة لفريم {tf_name}...")
+    
     df = yf.download("GC=F", period=cfg["period"], interval=cfg["interval"], progress=False)
     if df.empty:
         df = yf.download("XAUUSD=X", period=cfg["period"], interval=cfg["interval"], progress=False)
@@ -34,41 +84,25 @@ for tf_name, cfg in timeframes.items():
         df.columns = df.columns.get_level_values(0)
     df = df.dropna()
 
-    # إنشاء ملف الـ PDF
+    if "resample" in cfg:
+        df = df.resample('4h').agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last'}).dropna()
+
+    df_selected = df.tail(total_candles).copy()
     pdf_path = f"gold_pdf_candles/Gold_{tf_name}_Candles.pdf"
-    doc = SimpleDocTemplate(pdf_path, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
-    story = [
-        Paragraph(f"<b>Gold (XAUUSD) Candlestick Audit - {tf_name}</b>", styles['Title']),
-        Paragraph(f"Generated: {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} | Total Candles: {len(df)}", styles['Normal']),
-        HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#D97706'), spaceBefore=4, spaceAfter=10)
-    ]
+    doc = SimpleDocTemplate(pdf_path, pagesize=landscape(letter), leftMargin=15, rightMargin=15, topMargin=15, bottomMargin=15)
+    story = []
 
-    # جدول آخر 60 شمعة
-    rows = [[Paragraph(h, tbl_hdr) for h in ["Date/Time", "Open", "High", "Low", "Close", "Range", "Type"]]]
-    for idx, r in df.tail(60).iterrows():
-        dt_str = idx.strftime('%Y-%m-%d %H:%M') if hasattr(idx, 'strftime') else str(idx)[:16]
-        c_range = r['High'] - r['Low']
-        is_bull = r['Close'] >= r['Open']
-        rows.append([
-            Paragraph(dt_str, tbl_cell),
-            Paragraph(f"${r['Open']:.2f}", tbl_cell),
-            Paragraph(f"${r['High']:.2f}", tbl_cell),
-            Paragraph(f"${r['Low']:.2f}", tbl_cell),
-            Paragraph(f"${r['Close']:.2f}", tbl_cell),
-            Paragraph(f"${c_range:.2f}", tbl_cell),
-            Paragraph("BULL" if is_bull else "BEAR", bull_cell if is_bull else bear_cell)
-        ])
+    for p in range(cfg["pages"]):
+        chunk = df_selected.iloc[p * CANDLES_PER_PAGE : (p + 1) * CANDLES_PER_PAGE]
+        if chunk.empty:
+            continue
+        img_path = f"temp_pages/{tf_name}_p{p+1}.png"
+        render_candlestick_page(chunk, p + 1, cfg["pages"], tf_name, img_path)
+        story.append(RLImage(img_path, width=760, height=480))
+        if p < cfg["pages"] - 1:
+            story.append(PageBreak())
 
-    table = Table(rows, colWidths=[110, 70, 70, 70, 70, 70, 80], repeatRows=1)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0F172A')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#94A3B8')),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#F8FAFC')]),
-    ]))
-    story.append(table)
     doc.build(story)
+    print(f"تم إنشاء ملف {pdf_path} كشارتات شموع حقيقية!")
 
-print("تم توليد جميع ملفات الـ PDF بنجاح في مجلد gold_pdf_candles/!")
+print("اكتملت جميع ملفات الشموع الرسومية بنجاح!")
