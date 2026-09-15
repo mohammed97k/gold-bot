@@ -1,10 +1,13 @@
 import os
 import json
 import time
+import sys
 import requests
 from datetime import datetime, timezone, timedelta
 
-# الاعتماد المباشر على المفاتيح لتجاوز مشكلة المتغيرات الفارغة في جيت هاب
+# إجبار الطباعة المباشرة في سجلات GitHub Actions
+sys.stdout.reconfigure(line_buffering=True)
+
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN") or "8673315879:AAEPTIMUBtZu44zlSoumjDa8jJbVznGmEhE"
 CHAT_ID = os.getenv("CHAT_ID") or "1376555014"
 API_KEY = os.getenv("API_KEY") or "e12a2b0e02d4479094bd0e968e8b35e4"
@@ -149,7 +152,7 @@ def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
             print(f"[{symbol_name}] السوق مغلق (عطلة نهاية الأسبوع).")
             return
 
-        print(f"--- فحص {symbol_name} ({symbol_code}) ---")
+        print(f"--- بدء فحص {symbol_name} ({symbol_code}) ---")
 
         c_5m = fetch_candles(symbol_code, "5min", outputsize=40)
         time.sleep(1.2)
@@ -168,7 +171,7 @@ def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
         candle_time_iq = c_dt.astimezone(IRAQ_TZ)
         time_str = format_iraq_time_str(candle_time_iq)
 
-        # 1. إدارة الصفقة القائمة لنفس الأصل
+        # 1. متابعة الصفقات القائمة
         trade = state_dict.get(symbol_code)
         if trade:
             direction = trade["dir"]
@@ -186,7 +189,7 @@ def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
                     state_dict.pop(symbol_code, None)
                     return
                 elif curr_5m["low"] <= (entry if be_hit else sl):
-                    res_txt = "خروج على نقطة التأمين (BE)" if be_hit else "ضرب وقف الخسارة (SL)"
+                    res_txt = "خروج تأمين (BE)" if be_hit else "ضرب الستوب (SL)"
                     send_telegram(f"🛑 *{res_txt}*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🛑 الوقف: `{entry if be_hit else sl:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
                     state_dict.pop(symbol_code, None)
                     return
@@ -200,14 +203,13 @@ def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
                     state_dict.pop(symbol_code, None)
                     return
                 elif curr_5m["high"] >= (entry if be_hit else sl):
-                    res_txt = "خروج على نقطة التأمين (BE)" if be_hit else "ضرب وقف الخسارة (SL)"
+                    res_txt = "خروج تأمين (BE)" if be_hit else "ضرب الستوب (SL)"
                     send_telegram(f"🛑 *{res_txt}*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🛑 الوقف: `{entry if be_hit else sl:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
                     state_dict.pop(symbol_code, None)
                     return
                 elif not be_hit and curr_5m["low"] <= be:
                     trade["be_hit"] = True
                     send_telegram(f"🛡️ *تأمين الصفقة (BE Secured)* للأصل `{symbol_name}`!\nتم نقل الستوب إلى نقطة الدخول: `{entry:.{decimals}f}`")
-
             return
 
         # 2. حساب المؤشرات الفنية
@@ -246,8 +248,8 @@ def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
         short_signal = bear_bias and m15_bear and local_bear and bear_shift and (close_5m < open_5m)
 
         is_gold = "XAU" in symbol_code
-        min_sl = 1.5 if is_gold else 15.0
-        max_sl = 15.0 if is_gold else 150.0
+        min_sl = 1.5 if is_gold else 1.0
+        max_sl = 15.0 if is_gold else 10.0
 
         if long_signal:
             long_sl = low_5m - (atr_val * 0.10)
@@ -267,10 +269,13 @@ def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
                 state_dict[symbol_code] = {"dir": -1, "entry": close_5m, "sl": short_sl, "tp": short_tp, "be": short_be, "be_hit": False, "open_time": time_str}
                 send_telegram(f"🔴 *إشارة بيع مؤكدة (Gold Precision)*\nالأصل: `{symbol_name}`\n────────────────\n📌 سعر الدخول: `{close_5m:.{decimals}f}`\n🛑 وقف الخسارة (SL): `{short_sl:.{decimals}f}`\n🛡️ نقطة التأمين (BE): `{short_be:.{decimals}f}`\n🎯 الهدف (TP) [1:2]: `{short_tp:.{decimals}f}`\n⏰ الفريم: 5 دقائق\n⏱ التوقيت (العراق): `{time_str}`")
 
+        print(f"[{symbol_name}] تم الفحص بنجاح بدون إشارات جديدة.")
+
     except Exception as err:
         print(f"Error processing {symbol_name}: {err}")
 
 def main():
+    print(f"=== بدء الفحص: {get_iraq_time().strftime('%Y-%m-%d %I:%M:%S %p')} (بغداد) ===")
     state = load_state()
     symbols = [
         ("الذهب (XAU/USD)", "XAU/USD", 2),
@@ -279,6 +284,9 @@ def main():
     ]
     for s_name, s_code, dec in symbols:
         run_gold_precision(s_name, s_code, dec, state)
-        time.sleep(1.5)
+        time.sleep(2.0)
     save_state(state)
+    print("=== اكتمل الفحص لجميع الأصول ===")
 
+if __name__ == "__main__":
+    main()
