@@ -1,4 +1,4 @@
-name: Generate Real Candlestick PDFs
+name: Generate Gold CSV Data
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out repo
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -16,15 +16,13 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install yfinance pandas numpy matplotlib reportlab
+        run: pip install yfinance pandas
 
-      - name: Run PDF Candlestick Generator
-        run: python -u export_candles_pdf.py
+      - name: Export CSV Data
+        run: python -u export_csv_data.py
 
-      - name: Upload Real Candlestick PDFs
+      - name: Upload CSV Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: gold-real-candles-pack
-          path: gold_pdf_candles/
+          name: gold-csv-data
+          path: gold_csv_data/
