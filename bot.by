@@ -274,13 +274,11 @@ def main():
     state = load_state()
     symbols = [
         ("الذهب (XAU/USD)", "XAU/USD", 2),
-        ("داو جونز (US30)", "DJI", 2),
-        ("ناسداك (NAS100)", "IXIC", 2)
+        ("داو جونز (US30)", "DIA", 2),
+        ("ناسداك (NAS100)", "QQQ", 2)
     ]
     for s_name, s_code, dec in symbols:
         run_gold_precision(s_name, s_code, dec, state)
         time.sleep(1.5)
     save_state(state)
 
-if __name__ == "__main__":
-    main()
