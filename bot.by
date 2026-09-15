@@ -1,4 +1,6 @@
 import os
+import json
+import time
 import requests
 from datetime import datetime, timezone, timedelta
 
@@ -7,34 +9,54 @@ CHAT_ID = os.getenv("CHAT_ID", "1376555014")
 API_KEY = os.getenv("API_KEY", "e12a2b0e02d4479094bd0e968e8b35e4")
 
 IRAQ_TZ = timezone(timedelta(hours=3))
+STATE_FILE = "gold_precision_state.json"
 
 def get_iraq_time():
     return datetime.now(IRAQ_TZ)
+
+def format_iraq_time_str(dt):
+    h_24 = dt.hour
+    m = dt.minute
+    ampm = "PM" if h_24 >= 12 else "AM"
+    h_12 = h_24 % 12
+    h_disp = 12 if h_12 == 0 else h_12
+    return f"{h_disp:02d}:{m:02d} {ampm}"
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
     try:
-        requests.post(url, json=payload, timeout=15)
+        r = requests.post(url, json=payload, timeout=15)
+        print(f"Telegram status: {r.status_code}")
     except Exception as e:
         print(f"Telegram error: {e}")
 
-def check_symbol(symbol_name, symbol_code, decimals=2):
+def load_state():
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_state(state):
     try:
-        now_iq = get_iraq_time()
-        # إيقاف أثناء عطلة نهاية الأسبوع
-        if now_iq.weekday() in [5, 6]:
-            return False
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"State save error: {e}")
 
-        url = f"https://api.twelvedata.com/time_series?symbol={symbol_code}&interval=5min&outputsize=35&apikey={API_KEY}"
-        data = requests.get(url, timeout=15).json()
-
-        if "values" not in data:
-            return False
-
-        raw_candles = list(reversed(data["values"]))
+def fetch_candles(symbol, interval, outputsize=100):
+    url = f"https://api.twelvedata.com/time_series?symbol={symbol}&interval={interval}&outputsize={outputsize}&apikey={API_KEY}"
+    try:
+        res = requests.get(url, timeout=15).json()
+        if "values" not in res:
+            print(f"[{symbol} - {interval}] API Notice: {res.get('message', 'No data')}")
+            return []
+        raw = list(reversed(res["values"]))
         candles = []
-        for c in raw_candles:
+        for c in raw:
             candles.append({
                 "datetime": c["datetime"],
                 "open": float(c["open"]),
@@ -42,96 +64,214 @@ def check_symbol(symbol_name, symbol_code, decimals=2):
                 "low": float(c["low"]),
                 "close": float(c["close"])
             })
-
-        if len(candles) < 15:
-            return False
-
-        last_c = candles[-2]  # شمعة التأكيد المغلقة حديثاً
-
-        # التأكد الصارم أن الشمعة حديثة جداً (خلال آخر 7 دقائق فقط) لمنع تكرار القديم
-        candle_time = datetime.strptime(last_c["datetime"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-        candle_time_iq = candle_time.astimezone(IRAQ_TZ)
-        time_diff = (now_iq - candle_time_iq).total_seconds() / 60
-        if time_diff > 7 or time_diff < 0:
-            return False
-
-        price_now = candles[-1]["close"]
-        is_gold = (price_now > 1000 and price_now < 8000) or ("XAU" in symbol_code)
-        is_index = (price_now >= 8000) or ("DJI" in symbol_code) or ("IXIC" in symbol_code)
-
-        sl_pts = 10.0 if is_gold else (100.0 if is_index else 0.0015)
-        tp_pts = 25.0 if is_gold else (250.0 if is_index else 0.0030)
-        be_trigger = sl_pts * 0.7
-
-        # بناء قمم A وقيعان V بفلتر ارتدادي صلب (3 شموع) لمنع الفوضى
-        res_level = None
-        sup_level = None
-
-        for i in range(len(candles) - 4, 3, -1):
-            body_high = max(candles[i]["open"], candles[i]["close"])
-            if (body_high > max(candles[i-1]["open"], candles[i-1]["close"]) and 
-                body_high > max(candles[i-2]["open"], candles[i-2]["close"]) and
-                body_high > max(candles[i+1]["open"], candles[i+1]["close"])):
-                res_level = body_high
-                break
-
-        for i in range(len(candles) - 4, 3, -1):
-            body_low = min(candles[i]["open"], candles[i]["close"])
-            if (body_low < min(candles[i-1]["open"], candles[i-1]["close"]) and 
-                body_low < min(candles[i-2]["open"], candles[i-2]["close"]) and
-                body_low < min(candles[i+1]["open"], candles[i+1]["close"])):
-                sup_level = body_low
-                break
-
-        # شروط الرفض وتأكيد الشمعة
-        buy_trigger = (sup_level is not None) and (last_c["low"] <= sup_level) and (last_c["close"] > sup_level) and (last_c["close"] > last_c["open"])
-        sell_trigger = (res_level is not None) and (last_c["high"] >= res_level) and (last_c["close"] < res_level) and (last_c["close"] < last_c["open"])
-
-        formatted_time = candle_time_iq.strftime("%I:%M %p")
-
-        if buy_trigger:
-            entry = last_c["close"]
-            sl = entry - sl_pts
-            tp = entry + tp_pts
-            be_val = entry + be_trigger
-
-            send_telegram(
-                f"🟢 *إشارة شراء مؤكدة - {symbol_name}*\n"
-                f"───────────────\n"
-                f"📌 سعر الدخول: `{entry:.{decimals}f}`\n"
-                f"🛑 وقف الخسارة: `{sl:.{decimals}f}`\n"
-                f"🛡️ نقطة التأمين: `{be_val:.{decimals}f}`\n"
-                f"🎯 الهدف (+250 نقطة): `{tp:.{decimals}f}`\n"
-                f"⏰ الفريم: 5 دقائق\n"
-                f"⏱ التوقيت (العراق): `{formatted_time}`"
-            )
-            return True
-
-        elif sell_trigger:
-            entry = last_c["close"]
-            sl = entry + sl_pts
-            tp = entry - tp_pts
-            be_val = entry - be_trigger
-
-            send_telegram(
-                f"🔴 *إشارة بيع مؤكدة - {symbol_name}*\n"
-                f"───────────────\n"
-                f"📌 سعر الدخول: `{entry:.{decimals}f}`\n"
-                f"🛑 وقف الخسارة: `{sl:.{decimals}f}`\n"
-                f"🛡️ نقطة التأمين: `{be_val:.{decimals}f}`\n"
-                f"🎯 الهدف (+250 نقطة): `{tp:.{decimals}f}`\n"
-                f"⏰ الفريم: 5 دقائق\n"
-                f"⏱ التوقيت (العراق): `{formatted_time}`"
-            )
-            return True
-
-        return False
-
+        return candles
     except Exception as e:
-        print(f"Error checking {symbol_name}: {e}")
-        return False
+        print(f"Fetch error ({symbol} - {interval}): {e}")
+        return []
+
+def calc_ema(values, length):
+    if len(values) < length:
+        return [None] * len(values)
+    ema = [None] * len(values)
+    k = 2.0 / (length + 1)
+    sma = sum(values[:length]) / length
+    ema[length - 1] = sma
+    for i in range(length, len(values)):
+        ema[i] = (values[i] * k) + (ema[i - 1] * (1.0 - k))
+    return ema
+
+def calc_atr(candles, length=14):
+    trs = []
+    for i in range(len(candles)):
+        if i == 0:
+            trs.append(candles[i]["high"] - candles[i]["low"])
+        else:
+            hl = candles[i]["high"] - candles[i]["low"]
+            hcp = abs(candles[i]["high"] - candles[i - 1]["close"])
+            lcp = abs(candles[i]["low"] - candles[i - 1]["close"])
+            trs.append(max(hl, hcp, lcp))
+    if len(trs) < length:
+        return [0.0] * len(trs)
+    atr = [0.0] * len(trs)
+    atr[length - 1] = sum(trs[:length]) / length
+    for i in range(length, len(trs)):
+        atr[i] = (atr[i - 1] * (length - 1) + trs[i]) / length
+    return atr
+
+def calc_adx_dmi(candles, length=14):
+    tr, dm_plus, dm_minus = [], [], []
+    for i in range(len(candles)):
+        if i == 0:
+            tr.append(candles[i]["high"] - candles[i]["low"])
+            dm_plus.append(0.0)
+            dm_minus.append(0.0)
+        else:
+            up_move = candles[i]["high"] - candles[i - 1]["high"]
+            down_move = candles[i - 1]["low"] - candles[i]["low"]
+            dm_plus.append(up_move if (up_move > down_move and up_move > 0) else 0.0)
+            dm_minus.append(down_move if (down_move > up_move and down_move > 0) else 0.0)
+            hl = candles[i]["high"] - candles[i]["low"]
+            hcp = abs(candles[i]["high"] - candles[i - 1]["close"])
+            lcp = abs(candles[i]["low"] - candles[i - 1]["close"])
+            tr.append(max(hl, hcp, lcp))
+
+    if len(candles) < length * 2:
+        return 0.0, 0.0, 0.0
+
+    tr_smooth = sum(tr[1:length + 1])
+    plus_smooth = sum(dm_plus[1:length + 1])
+    minus_smooth = sum(dm_minus[1:length + 1])
+
+    dx_list = []
+    for i in range(length, len(candles)):
+        if i > length:
+            tr_smooth = tr_smooth - (tr_smooth / length) + tr[i]
+            plus_smooth = plus_smooth - (plus_smooth / length) + dm_plus[i]
+            minus_smooth = minus_smooth - (minus_smooth / length) + dm_minus[i]
+
+        di_p = 100 * (plus_smooth / tr_smooth) if tr_smooth > 0 else 0
+        di_m = 100 * (minus_smooth / tr_smooth) if tr_smooth > 0 else 0
+        sum_di = di_p + di_m
+        dx = 100 * (abs(di_p - di_m) / sum_di) if sum_di > 0 else 0
+        dx_list.append((dx, di_p, di_m))
+
+    if not dx_list:
+        return 0.0, 0.0, 0.0
+
+    adx = sum(d[0] for d in dx_list[:length]) / min(length, len(dx_list))
+    return dx_list[-1][1], dx_list[-1][2], adx
+
+def run_gold_precision(symbol_name, symbol_code, decimals=2, state_dict=None):
+    now_iq = get_iraq_time()
+    if now_iq.weekday() in [5, 6]:
+        print(f"[{symbol_name}] Market is closed (Weekend).")
+        return
+
+    print(f"\n--- Checking {symbol_name} ({symbol_code}) ---")
+
+    c_5m = fetch_candles(symbol_code, "5min", outputsize=50)
+    time.sleep(1.2)
+    c_15m = fetch_candles(symbol_code, "15min", outputsize=55)
+    time.sleep(1.2)
+    c_1h = fetch_candles(symbol_code, "1h", outputsize=210)
+
+    if len(c_5m) < 20 or len(c_15m) < 50 or len(c_1h) < 200:
+        print(f"[{symbol_name}] Insufficient candles returned.")
+        return
+
+    curr_5m = c_5m[-1]
+    last_5m = c_5m[-2]
+
+    # توثيق وتوحيد الوقت
+    c_dt = datetime.strptime(last_5m["datetime"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    candle_time_iq = c_dt.astimezone(IRAQ_TZ)
+    time_str = format_iraq_time_str(candle_time_iq)
+
+    # 1. فحص الصفقة النشطة
+    trade = state_dict.get(symbol_code)
+    if trade:
+        direction = trade["dir"]
+        entry = trade["entry"]
+        sl = trade["sl"]
+        tp = trade["tp"]
+        be = trade["be"]
+        be_hit = trade["be_hit"]
+        o_time = trade["open_time"]
+        close_t_str = format_iraq_time_str(now_iq)
+
+        if direction == 1:
+            if curr_5m["high"] >= tp:
+                send_telegram(f"🎯 *تحقق الهدف بالكامل (TP)*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
+                state_dict.pop(symbol_code, None)
+                return
+            elif curr_5m["low"] <= (entry if be_hit else sl):
+                res_txt = "خروج تأمين (BE)" if be_hit else "ضرب الستوب (SL)"
+                send_telegram(f"🛑 *{res_txt}*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🛑 الوقف: `{entry if be_hit else sl:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
+                state_dict.pop(symbol_code, None)
+                return
+            elif not be_hit and curr_5m["high"] >= be:
+                trade["be_hit"] = True
+                send_telegram(f"🛡️ *تأمين الصفقة (BE)* للأصل `{symbol_name}` على نقطة الدخول `{entry:.{decimals}f}`")
+        elif direction == -1:
+            if curr_5m["low"] <= tp:
+                send_telegram(f"🎯 *تحقق الهدف بالكامل (TP)*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🎯 الهدف: `{tp:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
+                state_dict.pop(symbol_code, None)
+                return
+            elif curr_5m["high"] >= (entry if be_hit else sl):
+                res_txt = "خروج تأمين (BE)" if be_hit else "ضرب الستوب (SL)"
+                send_telegram(f"🛑 *{res_txt}*\nالأصل: `{symbol_name}`\n📌 الدخول: `{entry:.{decimals}f}` | 🛑 الوقف: `{entry if be_hit else sl:.{decimals}f}`\n⏰ الافتتاح: `{o_time}` | ⏳ الإغلاق: `{close_t_str}`")
+                state_dict.pop(symbol_code, None)
+                return
+            elif not be_hit and curr_5m["low"] <= be:
+                trade["be_hit"] = True
+                send_telegram(f"🛡️ *تأمين الصفقة (BE)* للأصل `{symbol_name}` على نقطة الدخول `{entry:.{decimals}f}`")
+        return
+
+    # 2. حساب المؤشرات
+    h_closes = [c["close"] for c in c_1h]
+    h_e50 = calc_ema(h_closes, 50)[-2]
+    h_e200 = calc_ema(h_closes, 200)[-2]
+    bull_bias = (h_closes[-2] > h_e50) and (h_e50 > h_e200)
+    bear_bias = (h_closes[-2] < h_e50) and (h_e50 < h_e200)
+
+    m15_closes = [c["close"] for c in c_15m]
+    m15_e20 = calc_ema(m15_closes, 20)[-2]
+    m15_e50 = calc_ema(m15_closes, 50)[-2]
+    m15_bull = (m15_closes[-2] > m15_e20) and (m15_e20 > m15_e50)
+    m15_bear = (m15_closes[-2] < m15_e20) and (m15_e20 < m15_e50)
+
+    c5_closes = [c["close"] for c in c_5m]
+    idx = len(c_5m) - 2
+    c5_e20 = calc_ema(c5_closes, 20)[idx]
+    c5_e50 = calc_ema(c5_closes, 50)[idx]
+    atr_val = calc_atr(c_5m, 14)[idx]
+    di_plus, di_minus, adx = calc_adx_dmi(c_5m, 14)
+
+    close_5m = last_5m["close"]
+    open_5m = last_5m["open"]
+    high_5m = last_5m["high"]
+    low_5m = last_5m["low"]
+
+    local_bull = (close_5m > c5_e20) and (c5_e20 > c5_e50)
+    local_bear = (close_5m < c5_e20) and (c5_e20 < c5_e50)
+
+    liq_len = 10
+    prev_low = min(c["low"] for c in c_5m[idx - liq_len:idx])
+    prev_high = max(c["high"] for c in c_5m[idx - liq_len:idx])
+
+    bull_shift = (low_5m < prev_low) and (close_5m > prev_low)
+    bear_shift = (high_5m > prev_high) and (close_5m < prev_high)
+
+    print(f"Status -> 1H Bias: {'BULL' if bull_bias else ('BEAR' if bear_bias else 'NONE')}, 15M: {'BULL' if m15_bull else ('BEAR' if m15_bear else 'NONE')}, 5M Shift: {'BULL' if bull_shift else ('BEAR' if bear_shift else 'NONE')}")
+
+    long_signal = bull_bias and m15_bull and local_bull and bull_shift and (close_5m > open_5m)
+    short_signal = bear_bias and m15_bear and local_bear and bear_shift and (close_5m < open_5m)
+
+    is_gold = "XAU" in symbol_code
+    min_sl = 1.5 if is_gold else 15.0
+    max_sl = 15.0 if is_gold else 150.0
+
+    if long_signal:
+        long_sl = low_5m - (atr_val * 0.10)
+        risk = close_5m - long_sl
+        if min_sl <= risk <= max_sl:
+            long_tp = close_5m + (risk * 2.0)
+            long_be = close_5m + (risk * 1.0)
+            state_dict[symbol_code] = {"dir": 1, "entry": close_5m, "sl": long_sl, "tp": long_tp, "be": long_be, "be_hit": False, "open_time": time_str}
+            send_telegram(f"🟢 *إشارة شراء (Gold Precision)*\nالأصل: `{symbol_name}`\n📌 الدخول: `{close_5m:.{decimals}f}`\n🛑 الستوب: `{long_sl:.{decimals}f}`\n🛡️ التأمين: `{long_be:.{decimals}f}`\n🎯 الهدف: `{long_tp:.{decimals}f}`\n⏰ الوقت: `{time_str}`")
+
+    elif short_signal:
+        short_sl = high_5m + (atr_val * 0.10)
+        risk = short_sl - close_5m
+        if min_sl <= risk <= max_sl:
+            short_tp = close_5m - (risk * 2.0)
+            short_be = close_5m - (risk * 1.0)
+            state_dict[symbol_code] = {"dir": -1, "entry": close_5m, "sl": short_sl, "tp": short_tp, "be": short_be, "be_hit": False, "open_time": time_str}
+            send_telegram(f"🔴 *إشارة بيع (Gold Precision)*\nالأصل: `{symbol_name}`\n📌 الدخول: `{close_5m:.{decimals}f}`\n🛑 الستوب: `{short_sl:.{decimals}f}`\n🛡️ التأمين: `{short_be:.{decimals}f}`\n🎯 الهدف: `{short_tp:.{decimals}f}`\n⏰ الوقت: `{time_str}`")
 
 def main():
+    print(f"Runner Started at: {get_iraq_time().strftime('%Y-%m-%d %I:%M:%S %p')} (Baghdad)")
+    state = load_state()
     symbols = [
         ("الذهب (XAU/USD)", "XAU/USD", 2),
         ("داو جونز (US30)", "DJI", 2),
@@ -139,11 +279,11 @@ def main():
         ("الباوند (GBP/USD)", "GBP/USD", 5),
         ("اليورو (EUR/USD)", "EUR/USD", 5)
     ]
-    
     for s_name, s_code, dec in symbols:
-        triggered = check_symbol(s_name, s_code, dec)
-        if triggered:
-            break
+        run_gold_precision(s_name, s_code, dec, state)
+        time.sleep(1.5)
+    save_state(state)
+    print("Runner completed successfully.")
 
 if __name__ == "__main__":
     main()
