@@ -293,3 +293,4 @@ elif pending:
 
 save_state(state)
 print("[*] اكتمل الفحص بنجاح.")
+https://api.telegram.org/bot<ضع_توكن_البوت_هنا>/sendMessage?chat_id=<ضع_الآيدي_هنا>&text=اختبار_الاتصال_ناجح
