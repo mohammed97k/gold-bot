@@ -1,10 +1,13 @@
-name: Generate Gold CSV Data
+name: Gold Trading Signals Bot
 
 on:
+  schedule:
+    # يشتغل كل 5 دقائق من الإثنين للجمعة بتوقيت السوق
+    - cron: '*/5 * * * 1-5'
   workflow_dispatch:
 
 jobs:
-  build:
+  run-strategy:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repo
@@ -16,13 +19,11 @@ jobs:
           python-version: '3.10'
 
       - name: Install dependencies
-        run: pip install yfinance pandas
+        run: |
+          pip install yfinance pandas numpy requests
 
-      - name: Export CSV Data
-        run: python -u export_csv_data.py
-
-      - name: Upload CSV Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: gold-csv-data
-          path: gold_csv_data/
+      - name: Run Strategy Bot
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python gold_bot.py
