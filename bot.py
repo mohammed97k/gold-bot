@@ -124,6 +124,4 @@ def analyze_gold_market():
 
 if __name__ == "__main__":
     print("[*] بدء تشغيل البوت...")
-    # إرسال رسالة تأكيد فحص الاتصال على التليجرام مباشرة
-    send_telegram("🚀 *فحص اتصال البوت:*\nالبوت متصل ويعمل بنجاح من GitHub Actions، ويقوم بفحص شمعات الذهب (M15) الآن.")
     analyze_gold_market()
