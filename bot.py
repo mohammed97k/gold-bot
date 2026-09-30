@@ -3,434 +3,656 @@ import json
 import requests
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-# ==================== الإعدادات ====================
+# ==================== الإعدادات من GitHub Secrets ====================
 TWELVE_DATA_API_KEY = os.environ.get("TWELVE_DATA_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 TELEGRAM_GROUP_CHAT_ID = os.environ.get("TELEGRAM_GROUP_CHAT_ID")
-GITHUB_REPO = os.environ.get("GITHUB_REPOSITORY", "")  # مدمج تلقائياً في GitHub Actions
 
 STATE_FILE = "state.json"
 NY_TZ = ZoneInfo("America/New_York")
 
-# ==================== إعدادات الاستراتيجية ====================
+# ==================== الثوابت (نفس قيم Pine حرفياً) ====================
 MULT = 10.0
 ATR_PERIOD = 14
 MIN_SL_PTS = 40.0
 MAX_SL_PTS = 150.0
+COOLDOWN_NORMAL = 10
+COOLDOWN_STRONG = 3
+MAX_TRADES_PER_DAY = 3
+MAX_BARS_TRADE = 60
 TP1_R = 1.0
 TP2_R = 2.0
 TP3_R = 3.0
-MAX_TRADES_PER_DAY = 3
-COOLDOWN_NORMAL = 10
-COOLDOWN_STRONG = 3
-MAX_BARS_TRADE = 60
+PIVOT_LEN = 3
+SWEEP_LOOKBACK = 20
+FVG_EXPIRY = 15
+OB_EXPIRY = 15
+MSS_EXPIRY = 15
+SWEEP_EXPIRY = 20
 
 
 # ==================== تيليجرام ====================
 def send_telegram(message):
-    chat_ids = []
-    if TELEGRAM_CHAT_ID:
-        chat_ids.append(TELEGRAM_CHAT_ID)
-    if TELEGRAM_GROUP_CHAT_ID:
-        chat_ids.append(TELEGRAM_GROUP_CHAT_ID)
+    chat_ids = [c for c in [TELEGRAM_CHAT_ID, TELEGRAM_GROUP_CHAT_ID] if c]
     for chat_id in chat_ids:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": chat_id, "text": message}
         try:
-            r = requests.post(url, json=payload, timeout=15)
-            print(f"Telegram -> {chat_id}: {r.json().get('ok')}")
+            r = requests.post(url, json={"chat_id": chat_id, "text": message}, timeout=15)
+            print(f"TG->{chat_id}: ok={r.json().get('ok')}")
         except Exception as e:
-            print(f"Telegram Error: {e}")
+            print(f"TG Error: {e}")
 
 
 # ==================== جلب البيانات ====================
-def fetch_ohlc(interval="5min", outputsize=500, symbol="XAU/USD"):
+def fetch(symbol, interval, outputsize):
     url = "https://api.twelvedata.com/time_series"
     params = {
-        "symbol": symbol,
-        "interval": interval,
-        "outputsize": outputsize,
-        "apikey": TWELVE_DATA_API_KEY,
-        "format": "JSON",
-        "timezone": "UTC"
+        "symbol": symbol, "interval": interval,
+        "outputsize": outputsize, "apikey": TWELVE_DATA_API_KEY,
+        "format": "JSON", "timezone": "UTC"
     }
     r = requests.get(url, params=params, timeout=20)
     data = r.json()
     if "values" not in data:
-        print(f"❌ فشل جلب {interval}: {data.get('message', 'unknown')}")
+        print(f"❌ فشل {interval}: {data.get('message')}")
         return None
     df = pd.DataFrame(data["values"])
     df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
     for c in ["open", "high", "low", "close"]:
         df[c] = pd.to_numeric(df[c])
-    df = df.sort_values("datetime").reset_index(drop=True)
-    return df
+    return df.sort_values("datetime").reset_index(drop=True)
 
 
-# ==================== المؤشرات ====================
-def calc_atr(df, period=14):
+# ==================== المؤشرات المطابقة لـ Pine ====================
+def ta_atr(df, period=14):
+    """محاكاة ta.atr في Pine = RMA للـ True Range"""
     high, low, close = df["high"], df["low"], df["close"]
     tr = pd.concat([
         high - low,
-        (high - close.shift()).abs(),
-        (low - close.shift()).abs()
+        (high - close.shift(1)).abs(),
+        (low - close.shift(1)).abs()
     ], axis=1).max(axis=1)
-    return tr.ewm(alpha=1/period, adjust=False).mean()
+    # RMA = Wilder's smoothing
+    rma = tr.ewm(alpha=1.0/period, adjust=False).mean()
+    return rma
 
 
-def calc_ema(series, span):
-    return series.ewm(span=span, adjust=False).mean()
+def ta_ema(series, length):
+    return series.ewm(span=length, adjust=False).mean()
 
 
-def calc_pivots(df, left=3, right=3):
-    highs = df["high"].values
-    lows = df["low"].values
-    n = len(df)
-    pivot_high = [np.nan] * n
-    pivot_low = [np.nan] * n
+def ta_pivothigh(highs, left, right):
+    """محاكاة ta.pivothigh"""
+    n = len(highs)
+    result = np.full(n, np.nan)
     for i in range(left, n - right):
-        window_h = highs[i-left:i+right+1]
-        window_l = lows[i-left:i+right+1]
-        if highs[i] == window_h.max():
-            pivot_high[i] = highs[i]
-        if lows[i] == window_l.min():
-            pivot_low[i] = lows[i]
-    return pivot_high, pivot_low
+        window = highs[i-left:i+right+1]
+        if highs[i] == window.max() and (window == highs[i]).sum() == 1:
+            result[i] = highs[i]
+    return result
 
 
-# ==================== فلتر الجلسات (توقيت نيويورك) ====================
-def in_session(dt_ny, start_h, start_m, end_h, end_m):
-    t = dt_ny.hour * 60 + dt_ny.minute
-    s = start_h * 60 + start_m
-    e = end_h * 60 + end_m
-    return s <= t < e
+def ta_pivotlow(lows, left, right):
+    n = len(lows)
+    result = np.full(n, np.nan)
+    for i in range(left, n - right):
+        window = lows[i-left:i+right+1]
+        if lows[i] == window.min() and (window == lows[i]).sum() == 1:
+            result[i] = lows[i]
+    return result
 
 
-def get_active_sessions(dt_ny):
-    """يرجع قائمة الجلسات النشطة في هذا الوقت"""
-    sessions = []
-    if in_session(dt_ny, 3, 0, 4, 0):    sessions.append("SB-LDN")
-    if in_session(dt_ny, 9, 30, 10, 0):  sessions.append("Judas")
-    if in_session(dt_ny, 10, 0, 11, 0):  sessions.append("SB-AM")
-    if in_session(dt_ny, 11, 0, 11, 30): sessions.append("2022-AM")
-    if in_session(dt_ny, 11, 50, 12, 10): sessions.append("Lunch")
-    if in_session(dt_ny, 14, 0, 15, 0):  sessions.append("SB-PM")
-    if in_session(dt_ny, 15, 15, 15, 45): sessions.append("MOC")
-    if in_session(dt_ny, 14, 0, 14, 30): sessions.append("FOMC")
-    if dt_ny.weekday() == 4 and in_session(dt_ny, 14, 0, 15, 0):
-        sessions.append("TGIF")
-    return sessions
+def ta_lowest(series, length):
+    return series.rolling(length).min()
 
 
-def in_blackout(dt_ny):
-    return in_session(dt_ny, 12, 10, 13, 59)
+def ta_highest(series, length):
+    return series.rolling(length).max()
 
 
-# ==================== حفظ/تحميل الحالة ====================
+# ==================== الجلسات (نفس التوقيت بالضبط) ====================
+def tm(dt, h1, m1, h2, m2):
+    t = dt.hour * 60 + dt.minute
+    return (h1 * 60 + m1) <= t < (h2 * 60 + m2)
+
+def session_flags(dt):
+    return {
+        "SB-LDN":    tm(dt, 3, 0, 4, 0),
+        "Judas":     tm(dt, 9, 30, 10, 0),
+        "SB-AM":     tm(dt, 10, 0, 11, 0),
+        "2022-AM":   tm(dt, 11, 0, 11, 30),
+        "Lunch":     tm(dt, 11, 50, 12, 10),
+        "SB-PM":     tm(dt, 14, 0, 15, 0),
+        "MOC":       tm(dt, 15, 15, 15, 45),
+        "FOMC":      tm(dt, 14, 0, 14, 30),
+        "TGIF":      (dt.weekday() == 4) and tm(dt, 14, 0, 15, 0),
+    }
+
+def is_blackout(dt):
+    return tm(dt, 12, 10, 13, 59)
+
+
+# ==================== الحالة ====================
 def load_state():
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
+        with open(STATE_FILE) as f:
             return json.load(f)
     return {
         "active_trade": None,
         "last_entry_time": None,
         "trade_count_today": 0,
         "last_day": None,
-        "models_done_today": []
+        "models_done_today": [],
+        "last_close_time": None
+    }
+
+def save_state(s):
+    with open(STATE_FILE, "w") as f:
+        json.dump(s, f, indent=2)
+
+
+# ==================== بناء السياق (يحاكي var في Pine) ====================
+def build_context(df):
+    """
+    يبني كل المتغيرات الثابتة (var) في Pine على شكل قوائم،
+    حتى نعرف قيمة كل متغير عند كل شمعة، ونستخدم آخر قيمة عند الإشارة.
+    """
+    n = len(df)
+    atr = ta_atr(df, ATR_PERIOD).values
+
+    # Pivots
+    sh = ta_pivothigh(df["high"].values, PIVOT_LEN, PIVOT_LEN)
+    sl = ta_pivotlow(df["low"].values, PIVOT_LEN, PIVOT_LEN)
+
+    # آخر swing high/low (يتحدث عند كل pivot)
+    last_sh = np.full(n, np.nan)
+    last_sl = np.full(n, np.nan)
+    cur_sh = np.nan
+    cur_sl = np.nan
+    for i in range(n):
+        if not np.isnan(sh[i]):
+            cur_sh = sh[i]
+        if not np.isnan(sl[i]):
+            cur_sl = sl[i]
+        last_sh[i] = cur_sh
+        last_sl[i] = cur_sl
+
+    # Sweep
+    recent_low = ta_lowest(df["low"], SWEEP_LOOKBACK).shift(1).values
+    recent_high = ta_highest(df["high"], SWEEP_LOOKBACK).shift(1).values
+    bull_sweep = (df["low"].values < recent_low) & (df["close"].values > recent_low)
+    bear_sweep = (df["high"].values > recent_high) & (df["close"].values < recent_high)
+
+    bull_sweep_ok = np.zeros(n, dtype=bool)
+    bull_sweep_bar = np.full(n, -1, dtype=int)
+    bull_sweep_low = np.full(n, np.nan)
+    bear_sweep_ok = np.zeros(n, dtype=bool)
+    bear_sweep_bar = np.full(n, -1, dtype=int)
+    bear_sweep_high = np.full(n, np.nan)
+
+    cur_bull_ok, cur_bull_bar, cur_bull_low = False, -1, np.nan
+    cur_bear_ok, cur_bear_bar, cur_bear_high = False, -1, np.nan
+
+    for i in range(n):
+        if bull_sweep[i]:
+            cur_bull_ok, cur_bull_bar, cur_bull_low = True, i, df["low"].iloc[i]
+        if bear_sweep[i]:
+            cur_bear_ok, cur_bear_bar, cur_bear_high = True, i, df["high"].iloc[i]
+        # انتهاء الصلاحية بعد 20 شمعة (نفس Pine)
+        if cur_bull_ok and (i - cur_bull_bar) > SWEEP_EXPIRY:
+            cur_bull_ok = False
+        if cur_bear_ok and (i - cur_bear_bar) > SWEEP_EXPIRY:
+            cur_bear_ok = False
+        bull_sweep_ok[i] = cur_bull_ok
+        bull_sweep_bar[i] = cur_bull_bar
+        bull_sweep_low[i] = cur_bull_low
+        bear_sweep_ok[i] = cur_bear_ok
+        bear_sweep_bar[i] = cur_bear_bar
+        bear_sweep_high[i] = cur_bear_high
+
+    # MSS
+    bull_mss = np.zeros(n, dtype=bool)
+    bull_mss_bar = np.full(n, -1, dtype=int)
+    bear_mss = np.zeros(n, dtype=bool)
+    bear_mss_bar = np.full(n, -1, dtype=int)
+
+    cur_bull_mss, cur_bull_mss_bar = False, -1
+    cur_bear_mss, cur_bear_mss_bar = False, -1
+
+    close_arr = df["close"].values
+    for i in range(1, n):
+        # نفس شرط Pine: close > lastSH و close[1] <= lastSH و bullSweepOK
+        if not np.isnan(last_sh[i]) and close_arr[i] > last_sh[i] and close_arr[i-1] <= last_sh[i] and bull_sweep_ok[i]:
+            cur_bull_mss, cur_bull_mss_bar = True, i
+        if not np.isnan(last_sl[i]) and close_arr[i] < last_sl[i] and close_arr[i-1] >= last_sl[i] and bear_sweep_ok[i]:
+            cur_bear_mss, cur_bear_mss_bar = True, i
+        if cur_bull_mss and (i - cur_bull_mss_bar) > MSS_EXPIRY:
+            cur_bull_mss = False
+        if cur_bear_mss and (i - cur_bear_mss_bar) > MSS_EXPIRY:
+            cur_bear_mss = False
+        bull_mss[i] = cur_bull_mss
+        bull_mss_bar[i] = cur_bull_mss_bar
+        bear_mss[i] = cur_bear_mss
+        bear_mss_bar[i] = cur_bear_mss_bar
+
+    # FVG
+    bTop = np.full(n, np.nan); bBot = np.full(n, np.nan)
+    bBar = np.full(n, -1, dtype=int); bActive = np.zeros(n, dtype=bool)
+    sTop = np.full(n, np.nan); sBot = np.full(n, np.nan)
+    sBar = np.full(n, -1, dtype=int); sActive = np.zeros(n, dtype=bool)
+
+    cur_b_top, cur_b_bot, cur_b_bar, cur_b_active = np.nan, np.nan, -1, False
+    cur_s_top, cur_s_bot, cur_s_bar, cur_s_active = np.nan, np.nan, -1, False
+
+    low_a = df["low"].values; high_a = df["high"].values
+    for i in range(2, n):
+        if low_a[i] > high_a[i-2]:
+            cur_b_top, cur_b_bot, cur_b_bar, cur_b_active = low_a[i], high_a[i-2], i, True
+        if high_a[i] < low_a[i-2]:
+            cur_s_top, cur_s_bot, cur_s_bar, cur_s_active = low_a[i-2], high_a[i], i, True
+        if cur_b_active and (i - cur_b_bar) > FVG_EXPIRY: cur_b_active = False
+        if cur_s_active and (i - cur_s_bar) > FVG_EXPIRY: cur_s_active = False
+        bTop[i], bBot[i], bBar[i], bActive[i] = cur_b_top, cur_b_bot, cur_b_bar, cur_b_active
+        sTop[i], sBot[i], sBar[i], sActive[i] = cur_s_top, cur_s_bot, cur_s_bar, cur_s_active
+
+    bCE = np.where(bActive, (bTop + bBot) / 2.0, np.nan)
+    sCE = np.where(sActive, (sTop + sBot) / 2.0, np.nan)
+
+    # Order Blocks
+    bOBHigh = np.full(n, np.nan); bOBLow = np.full(n, np.nan); bOBMT = np.full(n, np.nan)
+    bOBBar = np.full(n, -1, dtype=int); bOBActive = np.zeros(n, dtype=bool)
+    sOBHigh = np.full(n, np.nan); sOBLow = np.full(n, np.nan); sOBMT = np.full(n, np.nan)
+    sOBBar = np.full(n, -1, dtype=int); sOBActive = np.zeros(n, dtype=bool)
+
+    o = df["open"].values; h = df["high"].values; l = df["low"].values; c = df["close"].values
+
+    cur_b_oh, cur_b_ol, cur_b_omt, cur_b_obar, cur_b_oact = np.nan, np.nan, np.nan, -1, False
+    cur_s_oh, cur_s_ol, cur_s_omt, cur_s_obar, cur_s_oact = np.nan, np.nan, np.nan, -1, False
+
+    for i in range(1, n):
+        if c[i] > o[i] and c[i-1] < o[i-1]:
+            cur_b_oh, cur_b_ol = h[i-1], l[i-1]
+            cur_b_omt = (o[i-1] + c[i-1]) / 2.0
+            cur_b_obar, cur_b_oact = i-1, True
+        if c[i] < o[i] and c[i-1] > o[i-1]:
+            cur_s_oh, cur_s_ol = h[i-1], l[i-1]
+            cur_s_omt = (o[i-1] + c[i-1]) / 2.0
+            cur_s_obar, cur_s_oact = i-1, True
+        if cur_b_oact and (i - cur_b_obar) > OB_EXPIRY: cur_b_oact = False
+        if cur_s_oact and (i - cur_s_obar) > OB_EXPIRY: cur_s_oact = False
+        bOBHigh[i], bOBLow[i], bOBMT[i] = cur_b_oh, cur_b_ol, cur_b_omt
+        bOBBar[i], bOBActive[i] = cur_b_obar, cur_b_oact
+        sOBHigh[i], sOBLow[i], sOBMT[i] = cur_s_oh, cur_s_ol, cur_s_omt
+        sOBBar[i], sOBActive[i] = cur_s_obar, cur_s_oact
+
+    # Breaker (لـ Mitigation)
+    bBrkHigh = np.full(n, np.nan); bBrkLow = np.full(n, np.nan)
+    bBrkBar = np.full(n, -1, dtype=int); bBrkActive = np.zeros(n, dtype=bool)
+    sBrkHigh = np.full(n, np.nan); sBrkLow = np.full(n, np.nan)
+    sBrkBar = np.full(n, -1, dtype=int); sBrkActive = np.zeros(n, dtype=bool)
+
+    cur_b_brh, cur_b_brl, cur_b_brbar, cur_b_bract = np.nan, np.nan, -1, False
+    cur_s_brh, cur_s_brl, cur_s_brbar, cur_s_bract = np.nan, np.nan, -1, False
+
+    for i in range(n):
+        if bull_mss[i] and bull_sweep_ok[i]:
+            cur_b_brh, cur_b_brl = last_sh[i], bull_sweep_low[i]
+            cur_b_brbar, cur_b_bract = i, True
+        if bear_mss[i] and bear_sweep_ok[i]:
+            cur_s_brh, cur_s_brl = bear_sweep_high[i], last_sl[i]
+            cur_s_brbar, cur_s_bract = i, True
+        if cur_b_bract and (i - cur_b_brbar) > 20: cur_b_bract = False
+        if cur_s_bract and (i - cur_s_brbar) > 20: cur_s_bract = False
+        bBrkHigh[i], bBrkLow[i] = cur_b_brh, cur_b_brl
+        bBrkBar[i], bBrkActive[i] = cur_b_brbar, cur_b_bract
+        sBrkHigh[i], sBrkLow[i] = cur_s_brh, cur_s_brl
+        sBrkBar[i], sBrkActive[i] = cur_s_brbar, cur_s_bract
+
+    bBrkCE = np.where(bBrkActive, (bBrkHigh + bBrkLow) / 2.0, np.nan)
+    sBrkCE = np.where(sBrkActive, (sBrkHigh + sBrkLow) / 2.0, np.nan)
+
+    # Equal Highs/Lows (تقريب EQL)
+    eq_tol = atr * 0.1
+    prev_sh = np.full(n, np.nan); prev_sl = np.full(n, np.nan)
+    psh = np.nan; psl = np.nan
+    last_sh_change = -1; last_sl_change = -1
+    for i in range(n):
+        if not np.isnan(sh[i]) and sh[i] != last_sh_change:
+            psh = last_sh[i-1] if i > 0 else np.nan
+            last_sh_change = sh[i]
+        if not np.isnan(sl[i]) and sl[i] != last_sl_change:
+            psl = last_sl[i-1] if i > 0 else np.nan
+            last_sl_change = sl[i]
+        prev_sh[i] = psh
+        prev_sl[i] = psl
+
+    eqHighs = (~np.isnan(prev_sh)) & (~np.isnan(last_sh)) & (np.abs(prev_sh - last_sh) < eq_tol)
+    eqLows  = (~np.isnan(prev_sl)) & (~np.isnan(last_sl)) & (np.abs(prev_sl - last_sl) < eq_tol)
+
+    # Shallow Run
+    shallowBull = (low_a < recent_low) & (low_a > (recent_low - 3 * 0.01)) & (c > recent_low)
+    shallowBear = (high_a > recent_high) & (high_a < (recent_high + 3 * 0.01)) & (c < recent_high)
+
+    # Open Float
+    floatUp = (ta_highest(df["high"], 20).values > ta_highest(df["high"], 40).shift(10).values)
+    floatDn = (ta_lowest(df["low"], 20).values < ta_lowest(df["low"], 40).shift(10).values)
+
+    # BPR
+    bprBull = bActive & sActive & (bBot <= sTop) & (bTop >= sBot)
+    bprBear = bActive & sActive & (sBot <= bTop) & (sTop >= bBot)
+
+    # Rejection
+    rejBlock = (h[:-1] < h[1:]) & False  # placeholder - سنحسبها أسفل
+    rejBlock_arr = np.zeros(n, dtype=bool)
+    rejTouchBull = np.zeros(n, dtype=bool)
+    rejBlockS_arr = np.zeros(n, dtype=bool)
+    rejTouchBear = np.zeros(n, dtype=bool)
+    for i in range(2, n):
+        rejBlock_arr[i] = (h[i-1] < h[i-2]) and (c[i-1] > o[i-1])
+        if rejBlock_arr[i] and l[i] <= l[i-1] and c[i] > l[i-1]:
+            rejTouchBull[i] = True
+        rejBlockS_arr[i] = (l[i-1] > l[i-2]) and (c[i-1] < o[i-1])
+        if rejBlockS_arr[i] and h[i] >= h[i-1] and c[i] < h[i-1]:
+            rejTouchBear[i] = True
+
+    # Liquidity Void
+    lqVoidUp = (low_a > high_a[:-1]) & ((low_a - np.roll(high_a, 2)) >= atr * 1.5)
+    lqVoidDn = (high_a < np.roll(low_a, 2)) & ((np.roll(low_a, 2) - high_a) >= atr * 1.5)
+
+    # Propulsion
+    bProp = bOBActive & (c < o) & (h <= bOBHigh) & (l >= bOBLow)
+    sProp = sOBActive & (c > o) & (l >= sOBLow) & (h <= sOBHigh)
+
+    # Mitigation
+    mitBull = bBrkActive & (c < o) & (l <= bBrkCE) & (l >= bBrkLow)
+    mitBear = sBrkActive & (c > o) & (h >= sBrkCE) & (h <= sBrkHigh)
+
+    # Power of 3
+    p3Bull = (low_a < np.roll(low_a, 1)) & (c > np.roll(low_a, 1)) & bull_mss
+    p3Bear = (high_a > np.roll(high_a, 1)) & (c < np.roll(high_a, 1)) & bear_mss
+
+    # Quarterly
+    q4 = (df["datetime"].dt.month >= 10).values
+
+    # NDOG / WkOpen / ORG (مبسطة بناءً على شمعة الافتتاح)
+    ndogCE = np.full(n, np.nan)
+    wkOpen = np.full(n, np.nan)
+    orgCE = np.full(n, np.nan)
+    # نستخدم شمعة كل 24 ساعة كتقريب
+    df_ny = df["datetime"].dt.tz_convert(NY_TZ)
+    for i in range(n):
+        dt_ny = df_ny.iloc[i]
+        if dt_ny.hour == 18 and dt_ny.minute == 0:
+            ndogCE[i] = (c[i] + c[i-1]) / 2.0
+        if dt_ny.hour == 9 and dt_ny.minute == 30:
+            orgCE[i] = (c[i] + c[i-1]) / 2.0
+        # forward fill
+        if i > 0:
+            if np.isnan(ndogCE[i]): ndogCE[i] = ndogCE[i-1]
+            if np.isnan(orgCE[i]): orgCE[i] = orgCE[i-1]
+
+    ndogTouchBull = (~np.isnan(ndogCE)) & (low_a <= ndogCE) & (c > ndogCE)
+    ndogTouchBear = (~np.isnan(ndogCE)) & (high_a >= ndogCE) & (c < ndogCE)
+    orgTouchBull = (~np.isnan(orgCE)) & (low_a <= orgCE) & (c > orgCE)
+    orgTouchBear = (~np.isnan(orgCE)) & (high_a >= orgCE) & (c < orgCE)
+
+    # TCP / FVG / BOS
+    recentBullMSS = bull_mss & ((np.arange(n) - bull_mss_bar) <= 10)
+    recentBearMSS = bear_mss & ((np.arange(n) - bear_mss_bar) <= 10)
+
+    return {
+        "atr": atr, "last_sh": last_sh, "last_sl": last_sl,
+        "bull_sweep_ok": bull_sweep_ok, "bear_sweep_ok": bear_sweep_ok,
+        "bull_sweep_low": bull_sweep_low, "bear_sweep_high": bear_sweep_high,
+        "bull_mss": bull_mss, "bear_mss": bear_mss,
+        "bTop": bTop, "bBot": bBot, "bActive": bActive,
+        "sTop": sTop, "sBot": sBot, "sActive": sActive,
+        "bCE": bCE, "sCE": sCE,
+        "bOBHigh": bOBHigh, "bOBLow": bOBLow, "bOBMT": bOBMT, "bOBActive": bOBActive,
+        "sOBHigh": sOBHigh, "sOBLow": sOBLow, "sOBMT": sOBMT, "sOBActive": sOBActive,
+        "bBrkActive": bBrkActive, "sBrkActive": sBrkActive,
+        "bBrkCE": bBrkCE, "sBrkCE": sBrkCE,
+        "bBrkLow": bBrkLow, "sBrkHigh": sBrkHigh,
+        "eqHighs": eqHighs, "eqLows": eqLows,
+        "shallowBull": shallowBull, "shallowBear": shallowBear,
+        "floatUp": floatUp, "floatDn": floatDn,
+        "bprBull": bprBull, "bprBear": bprBear,
+        "rejTouchBull": rejTouchBull, "rejTouchBear": rejTouchBear,
+        "lqVoidUp": lqVoidUp, "lqVoidDn": lqVoidDn,
+        "bProp": bProp, "sProp": sProp,
+        "mitBull": mitBull, "mitBear": mitBear,
+        "p3Bull": p3Bull, "p3Bear": p3Bear,
+        "q4": q4,
+        "ndogTouchBull": ndogTouchBull, "ndogTouchBear": ndogTouchBear,
+        "orgTouchBull": orgTouchBull, "orgTouchBear": orgTouchBear,
+        "recentBullMSS": recentBullMSS, "recentBearMSS": recentBearMSS,
     }
 
 
-def save_state(state):
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
+# ==================== فحص الإشارة على آخر شمعة ====================
+def check_signal(df5, df1h, state, now_utc, now_ny):
+    ctx = build_context(df5)
+    i = len(df5) - 1
+    atr = ctx["atr"][i]
+    if np.isnan(atr): return None
+
+    # الترند على H1 - نأخذ آخر شمعة مغلقة من H1
+    df1h = df1h.copy()
+    df1h["ema200"] = ta_ema(df1h["close"], 200)
+    df1h["ema50"] = ta_ema(df1h["close"], 50)
+    h1 = df1h.iloc[-2]  # الشمعة المغلقة الأخيرة
+    trend_up = h1["close"] > h1["ema200"]
+    trend_down = h1["close"] < h1["ema200"]
+    strong_bull = trend_up and h1["close"] > h1["ema50"]
+    strong_bear = trend_down and h1["close"] < h1["ema50"]
+
+    sessions = session_flags(now_ny)
+    active_sessions = [k for k, v in sessions.items() if v]
+    if not active_sessions: return None
+    if is_blackout(now_ny): return None
+    if state["trade_count_today"] >= MAX_TRADES_PER_DAY: return None
+
+    # Cooldown
+    if state["last_entry_time"]:
+        last_dt = datetime.fromisoformat(state["last_entry_time"])
+        bars_since = int((now_utc - last_dt).total_seconds() / 300)
+        cd = COOLDOWN_STRONG if (strong_bull or strong_bear) else COOLDOWN_NORMAL
+        if bars_since < cd: return None
+
+    # تعريف النماذج المتفعلة (نفس v9.5.1 CLEAN)
+    s1L  = (ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up)
+    s1S  = (ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down)
+    s2L, s2S = s1L, s1S
+    s3L, s3S = s1L, s1S
+    s4L, s4S = s1L, s1S
+    s5L, s5S = s1L, s1S
+    s6L, s6S = s1L, s1S
+    s7L, s7S = s1L, s1S
+
+    s17L = ctx["bOBActive"][i] and ctx["bOBLow"][i] <= df5["low"].iloc[i] <= ctx["bOBMT"][i] and trend_up
+    s17S = ctx["sOBActive"][i] and ctx["sOBMT"][i] <= df5["high"].iloc[i] <= ctx["sOBHigh"][i] and trend_down
+
+    s18L = ctx["bProp"][i] and ctx["bull_mss"][i] and trend_up
+    s18S = ctx["sProp"][i] and ctx["bear_mss"][i] and trend_down
+
+    s20L = ctx["mitBull"][i] and trend_up
+    s20S = ctx["mitBear"][i] and trend_down
+
+    s22L = ctx["eqLows"][i] and ctx["bull_sweep_ok"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s22S = ctx["eqHighs"][i] and ctx["bear_sweep_ok"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    s24L = ctx["shallowBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s24S = ctx["shallowBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    s26L = ctx["floatUp"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s26S = ctx["floatDn"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    s27L = ctx["ndogTouchBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s27S = ctx["ndogTouchBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    s29L = ctx["orgTouchBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s29S = ctx["orgTouchBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    s30L = ctx["bprBull"][i] and ctx["bull_mss"][i] and trend_up
+    s30S = ctx["bprBear"][i] and ctx["bear_mss"][i] and trend_down
+
+    s32L = ctx["rejTouchBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s32S = ctx["rejTouchBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    s33L = ctx["lqVoidUp"][i] and ctx["bull_mss"][i] and trend_up
+    s33S = ctx["lqVoidDn"][i] and ctx["bear_mss"][i] and trend_down
+
+    s36L = ctx["q4"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s36S = ctx["q4"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    s37L = ctx["p3Bull"][i] and ctx["bActive"][i] and trend_up
+    s37S = ctx["p3Bear"][i] and ctx["sActive"][i] and trend_down
+
+    s35L = (now_ny.weekday() == 4) and sessions["TGIF"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
+    s35S = (now_ny.weekday() == 4) and sessions["TGIF"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
+
+    tcpL = strong_bull and ctx["recentBullMSS"][i] and ctx["bActive"][i] and ctx["bBot"][i] < ctx["bCE"][i] < df5["close"].iloc[i]
+    tcpS = strong_bear and ctx["recentBearMSS"][i] and ctx["sActive"][i] and ctx["sTop"][i] > ctx["sCE"][i] > df5["close"].iloc[i]
+
+    fvgL = strong_bull and ctx["bActive"][i] and ctx["bBot"][i] < ctx["bCE"][i] < df5["close"].iloc[i]
+    fvgS = strong_bear and ctx["sActive"][i] and ctx["sTop"][i] > ctx["sCE"][i] > df5["close"].iloc[i]
+
+    bosL = False; bosS = False  # BOS يحتاج تعريف أدق
+
+    sigL = s1L or s2L or s3L or s4L or s5L or s6L or s7L or s17L or s18L or s20L or s22L or s24L or s26L or s27L or s29L or s30L or s32L or s33L or s35L or s36L or s37L or tcpL or fvgL or bosL
+    sigS = s1S or s2S or s3S or s4S or s5S or s6S or s7S or s17S or s18S or s20S or s22S or s24S or s26S or s27S or s29S or s30S or s32S or s33S or s35S or s36S or s37S or tcpS or fvgS or bosS
+
+    if not (sigL or sigS): return None
+
+    # تحديد النموذج
+    model = "Unknown"
+    if s1L or s1S: model = "SB-LDN"
+    elif s2L or s2S: model = "Judas"
+    elif s3L or s3S: model = "SB-AM"
+    elif s4L or s4S: model = "2022-AM"
+    elif s5L or s5S: model = "Lunch"
+    elif s6L or s6S: model = "SB-PM"
+    elif s7L or s7S: model = "MOC"
+    elif s17L or s17S: model = "OB"
+    elif s18L or s18S: model = "Prop"
+    elif s20L or s20S: model = "Mitig"
+    elif s22L or s22S: model = "EQL"
+    elif s24L or s24S: model = "Shallow"
+    elif s26L or s26S: model = "Float"
+    elif s27L or s27S: model = "NDOG"
+    elif s29L or s29S: model = "ORG"
+    elif s30L or s30S: model = "BPR"
+    elif s32L or s32S: model = "Reject"
+    elif s33L or s33S: model = "Void"
+    elif s35L or s35S: model = "TGIF"
+    elif s36L or s36S: model = "Quarter"
+    elif s37L or s37S: model = "P3"
+    elif tcpL or tcpS: model = "TCP"
+    elif fvgL or fvgS: model = "FVG"
+
+    # تحديد الدخول والستوب (نفس منطق Pine)
+    close = df5["close"].iloc[i]
+    if sigL:
+        if (s17L or s18L) and ctx["bOBActive"][i]:
+            entry = ctx["bOBMT"][i]; sl_level = ctx["bOBLow"][i] - atr * 0.3
+        elif (fvgL or bosL) and ctx["bActive"][i]:
+            entry = ctx["bCE"][i]; sl_level = ctx["bBot"][i] - atr * 0.3
+        elif ctx["bActive"][i]:
+            entry = ctx["bCE"][i]; sl_level = ctx["bull_sweep_low"][i] - atr * 0.3
+        else:
+            entry = close; sl_level = ctx["bull_sweep_low"][i] - atr * 0.3
+        direction = "BUY"
+    else:
+        if (s17S or s18S) and ctx["sOBActive"][i]:
+            entry = ctx["sOBMT"][i]; sl_level = ctx["sOBHigh"][i] + atr * 0.3
+        elif (fvgS or bosS) and ctx["sActive"][i]:
+            entry = ctx["sCE"][i]; sl_level = ctx["sTop"][i] + atr * 0.3
+        elif ctx["sActive"][i]:
+            entry = ctx["sCE"][i]; sl_level = ctx["bear_sweep_high"][i] + atr * 0.3
+        else:
+            entry = close; sl_level = ctx["bear_sweep_high"][i] + atr * 0.3
+        direction = "SELL"
+
+    sl_pts = abs(entry - sl_level) * MULT
+    if sl_pts < MIN_SL_PTS or sl_pts > MAX_SL_PTS: return None
+
+    sl_dist = abs(entry - sl_level)
+    if direction == "BUY":
+        tp1, tp2, tp3 = entry + sl_dist*TP1_R, entry + sl_dist*TP2_R, entry + sl_dist*TP3_R
+    else:
+        tp1, tp2, tp3 = entry - sl_dist*TP1_R, entry - sl_dist*TP2_R, entry - sl_dist*TP3_R
+
+    return {
+        "model": model, "direction": direction,
+        "entry": round(entry, 2), "sl": round(sl_level, 2),
+        "tp1": round(tp1, 2), "tp2": round(tp2, 2), "tp3": round(tp3, 2)
+    }
 
 
 # ==================== إدارة الصفقة ====================
-def check_active_trade(state, current_price, current_time):
-    trade = state["active_trade"]
-    if trade is None:
-        return
-    direction = trade["direction"]
-    entry = trade["entry"]
-    sl = trade["sl"]
-    tp1 = trade["tp1"]
-    tp2 = trade["tp2"]
-    tp3 = trade["tp3"]
+def manage_trade(state, current_price, now_ny):
+    t = state["active_trade"]
+    if t is None: return
+    d, e, sl, tp1, tp2, tp3 = t["direction"], t["entry"], t["sl"], t["tp1"], t["tp2"], t["tp3"]
 
-    # فحص الستوب
-    if (direction == "BUY" and current_price <= sl) or \
-       (direction == "SELL" and current_price >= sl):
-        if not trade["tp1_hit"]:
-            send_telegram(
-                f"🛑 ضرب الستوب!\n"
-                f"النموذج: {trade['model']}\n"
-                f"الاتجاه: {direction}\n"
-                f"الدخول: {entry}\n"
-                f"الستوب: {sl}\n"
-                f"الوقت: {current_time.strftime('%H:%M')}"
-            )
+    if (d == "BUY" and current_price <= sl) or (d == "SELL" and current_price >= sl):
+        if t["tp1_hit"]:
+            send_telegram(f"⚖️ ضرب الستوب بعد TP1 (Break Even)\nالنموذج: {t['model']}\nالاتجاه: {d}\nالدخول: {e}\nالوقت: {now_ny.strftime('%H:%M')}")
         else:
-            send_telegram(
-                f"⚖️ ضرب الستوب بعد TP1 (Break Even)\n"
-                f"النموذج: {trade['model']}\n"
-                f"الاتجاه: {direction}\n"
-                f"الدخول: {entry}\n"
-                f"الوقت: {current_time.strftime('%H:%M')}"
-            )
+            send_telegram(f"🛑 ضرب الستوب!\nالنموذج: {t['model']}\nالاتجاه: {d}\nالدخول: {e}\nالستوب: {sl}\nالوقت: {now_ny.strftime('%H:%M')}")
         state["active_trade"] = None
         return
 
-    # فحص الأهداف
-    if not trade["tp1_hit"]:
-        if (direction == "BUY" and current_price >= tp1) or \
-           (direction == "SELL" and current_price <= tp1):
-            trade["tp1_hit"] = True
-            send_telegram(
-                f"🎯 ضربنا الهدف الأول! احجز ربحك\n"
-                f"النموذج: {trade['model']}\n"
-                f"الاتجاه: {direction}\n"
-                f"TP1: {tp1}\n"
-                f"الوقت: {current_time.strftime('%H:%M')}"
-            )
-
-    if trade["tp1_hit"] and not trade["tp2_hit"]:
-        if (direction == "BUY" and current_price >= tp2) or \
-           (direction == "SELL" and current_price <= tp2):
-            trade["tp2_hit"] = True
-            send_telegram(
-                f"🎯🎯 ضربنا الهدف الثاني!\n"
-                f"النموذج: {trade['model']}\n"
-                f"الاتجاه: {direction}\n"
-                f"TP2: {tp2}\n"
-                f"الوقت: {current_time.strftime('%H:%M')}"
-            )
-
-    if trade["tp2_hit"] and not trade["tp3_hit"]:
-        if (direction == "BUY" and current_price >= tp3) or \
-           (direction == "SELL" and current_price <= tp3):
-            trade["tp3_hit"] = True
-            send_telegram(
-                f"🎯🎯🎯 ضربنا الهدف الثالث! يلا سوي دبچة 🕺🕺🕺\n"
-                f"النموذج: {trade['model']}\n"
-                f"الاتجاه: {direction}\n"
-                f"TP3: {tp3}\n"
-                f"الوقت: {current_time.strftime('%H:%M')}"
-            )
-            state["active_trade"] = None
-
-
-# ==================== فحص الإشارات ====================
-def detect_signals(df5, df1h, state, current_time):
-    """يرجع قائمة بالصفقات المقترحة"""
-    signals = []
-
-    # حساب المؤشرات على 5 دقائق
-    df5["atr"] = calc_atr(df5, ATR_PERIOD)
-    last = df5.iloc[-1]
-    atr = last["atr"]
-    if pd.isna(atr):
-        return signals
-
-    # حساب الترند على H1
-    df1h["ema200"] = calc_ema(df1h["close"], 200)
-    df1h["ema50"] = calc_ema(df1h["close"], 50)
-    h1_last = df1h.iloc[-1]
-    trend_up = h1_last["close"] > h1_last["ema200"]
-    trend_down = h1_last["close"] < h1_last["ema200"]
-    strong_bull = trend_up and h1_last["close"] > h1_last["ema50"]
-    strong_bear = trend_down and h1_last["close"] < h1_last["ema50"]
-
-    # Pivots (نحسب على آخر 100 شمعة لتسريع الحساب)
-    df_recent = df5.tail(200).reset_index(drop=True)
-    ph, pl = calc_pivots(df_recent, 3, 3)
-
-    # آخر swing high / low
-    last_sh = None
-    last_sl = None
-    for i in range(len(df_recent) - 1, -1, -1):
-        if last_sh is None and not np.isnan(ph[i]):
-            last_sh = ph[i]
-        if last_sl is None and not np.isnan(pl[i]):
-            last_sl = pl[i]
-        if last_sh is not None and last_sl is not None:
-            break
-
-    if last_sh is None or last_sl is None:
-        return signals
-
-    # Sweep - استخدام آخر 20 شمعة
-    recent_low_20 = df_recent["low"].iloc[-21:-1].min()
-    recent_high_20 = df_recent["high"].iloc[-21:-1].max()
-
-    bull_sweep = (last["low"] < recent_low_20) and (last["close"] > recent_low_20)
-    bear_sweep = (last["high"] > recent_high_20) and (last["close"] < recent_high_20)
-
-    # MSS: كسر آخر swing high/low
-    bull_mss = False
-    bear_mss = False
-    if len(df_recent) >= 2:
-        prev = df_recent.iloc[-2]
-        if last["close"] > last_sh and prev["close"] <= last_sh and bull_sweep:
-            bull_mss = True
-        if last["close"] < last_sl and prev["close"] >= last_sl and bear_sweep:
-            bear_mss = True
-
-    # FVG - كشف الفجوات
-    bull_fvg_top = None
-    bull_fvg_bot = None
-    bear_fvg_top = None
-    bear_fvg_bot = None
-    if len(df_recent) >= 3:
-        if last["low"] > df_recent["high"].iloc[-3]:
-            bull_fvg_top = last["low"]
-            bull_fvg_bot = df_recent["high"].iloc[-3]
-        if last["high"] < df_recent["low"].iloc[-3]:
-            bear_fvg_top = df_recent["low"].iloc[-3]
-            bear_fvg_bot = last["high"]
-
-    # Order Block - آخر شمعة عكسية قبل شمعة قوية
-    bull_ob_high, bull_ob_low = None, None
-    bear_ob_high, bear_ob_low = None, None
-    if len(df_recent) >= 2:
-        prev = df_recent.iloc[-2]
-        if last["close"] > last["open"] and prev["close"] < prev["open"]:
-            bull_ob_high = prev["high"]
-            bull_ob_low = prev["low"]
-        if last["close"] < last["open"] and prev["close"] > prev["open"]:
-            bear_ob_high = prev["high"]
-            bear_ob_low = prev["low"]
-
-    # الجلسات النشطة
-    sessions = get_active_sessions(current_time)
-    if not sessions:
-        return signals
-    if in_blackout(current_time):
-        return signals
-
-    # فحص الحد اليومي وعدد الصفقات
-    if state["trade_count_today"] >= MAX_TRADES_PER_DAY:
-        return signals
-
-    # فحص الكول داون
-    if state["last_entry_time"]:
-        last_entry_dt = datetime.fromisoformat(state["last_entry_time"])
-        bars_since = int((current_time - last_entry_dt).total_seconds() / 300)
-        cooldown = COOLDOWN_STRONG if (strong_bull or strong_bear) else COOLDOWN_NORMAL
-        if bars_since < cooldown:
-            return signals
-
-    # ==================== شروط النماذج ====================
-    # هنا نطبق نفس منطق Pine: نموذج الوقت + MSS + FVG/OB
-
-    def try_signal(model_name, direction, entry, sl_level):
-        sl_pts = abs(entry - sl_level) * MULT
-        if sl_pts < MIN_SL_PTS or sl_pts > MAX_SL_PTS:
-            return
-        sl_dist = abs(entry - sl_level)
-        if direction == "BUY":
-            tp1 = entry + sl_dist * TP1_R
-            tp2 = entry + sl_dist * TP2_R
-            tp3 = entry + sl_dist * TP3_R
-        else:
-            tp1 = entry - sl_dist * TP1_R
-            tp2 = entry - sl_dist * TP2_R
-            tp3 = entry - sl_dist * TP3_R
-        signals.append({
-            "model": model_name,
-            "direction": direction,
-            "entry": round(entry, 2),
-            "sl": round(sl_level, 2),
-            "tp1": round(tp1, 2),
-            "tp2": round(tp2, 2),
-            "tp3": round(tp3, 2)
-        })
-
-    for sess in sessions:
-        if sess in state["models_done_today"]:
-            continue
-
-        # Buy setups
-        if trend_up and bull_mss:
-            # أولوية: OB -> FVG -> CE
-            if bull_ob_high is not None and last["low"] <= (bull_ob_high + bull_ob_low) / 2:
-                entry = (bull_ob_high + bull_ob_low) / 2
-                sl_level = bull_ob_low - atr * 0.3
-                try_signal(sess, "BUY", entry, sl_level)
-            elif bull_fvg_top is not None and last["low"] <= (bull_fvg_top + bull_fvg_bot) / 2:
-                entry = (bull_fvg_top + bull_fvg_bot) / 2
-                sl_level = bull_fvg_bot - atr * 0.3
-                try_signal(sess, "BUY", entry, sl_level)
-
-        # Sell setups
-        if trend_down and bear_mss:
-            if bear_ob_high is not None and last["high"] >= (bear_ob_high + bear_ob_low) / 2:
-                entry = (bear_ob_high + bear_ob_low) / 2
-                sl_level = bear_ob_high + atr * 0.3
-                try_signal(sess, "SELL", entry, sl_level)
-            elif bear_fvg_top is not None and last["high"] >= (bear_fvg_top + bear_fvg_bot) / 2:
-                entry = (bear_fvg_top + bear_fvg_bot) / 2
-                sl_level = bear_fvg_top + atr * 0.3
-                try_signal(sess, "SELL", entry, sl_level)
-
-    return signals
+    if not t["tp1_hit"] and ((d == "BUY" and current_price >= tp1) or (d == "SELL" and current_price <= tp1)):
+        t["tp1_hit"] = True
+        send_telegram(f"🎯 ضربنا الهدف الأول! احجز ربحك\nالنموذج: {t['model']}\nالاتجاه: {d}\nTP1: {tp1}\nالوقت: {now_ny.strftime('%H:%M')}")
+    if t["tp1_hit"] and not t["tp2_hit"] and ((d == "BUY" and current_price >= tp2) or (d == "SELL" and current_price <= tp2)):
+        t["tp2_hit"] = True
+        send_telegram(f"🎯🎯 ضربنا الهدف الثاني!\nالنموذج: {t['model']}\nTP2: {tp2}\nالوقت: {now_ny.strftime('%H:%M')}")
+    if t["tp2_hit"] and not t["tp3_hit"] and ((d == "BUY" and current_price >= tp3) or (d == "SELL" and current_price <= tp3)):
+        t["tp3_hit"] = True
+        send_telegram(f"🎯🎯🎯 ضربنا الهدف الثالث! يلا سوي دبچة 🕺🕺🕺\nالنموذج: {t['model']}\nTP3: {tp3}\nالوقت: {now_ny.strftime('%H:%M')}")
+        state["active_trade"] = None
 
 
 # ==================== الدالة الرئيسية ====================
 def main():
-    print("🤖 بدء التشغيل...")
-
+    print("🤖 بدء...")
     state = load_state()
     now_utc = datetime.now(ZoneInfo("UTC"))
     now_ny = now_utc.astimezone(NY_TZ)
 
-    # إعادة تعيين العدادات عند بداية يوم جديد
     today = now_ny.date().isoformat()
     if state["last_day"] != today:
         state["trade_count_today"] = 0
         state["models_done_today"] = []
         state["last_day"] = today
 
-    # جلب البيانات
-    df5 = fetch_ohlc("5min", 500)
-    df1h = fetch_ohlc("1h", 500)
+    df5 = fetch("XAU/USD", "5min", 500)
+    df1h = fetch("XAU/USD", "1h", 500)
     if df5 is None or df1h is None:
-        send_telegram("❌ فشل جلب البيانات من Twelve Data")
-        save_state(state)
-        return
+        send_telegram("❌ فشل جلب البيانات")
+        save_state(state); return
 
-    current_price = float(df5.iloc[-1]["close"])
-    print(f"السعر الحالي: {current_price} | الوقت NY: {now_ny.strftime('%H:%M')}")
+    price = float(df5.iloc[-1]["close"])
+    print(f"السعر: {price} | NY: {now_ny.strftime('%H:%M')}")
 
-    # 1. إذا فيه صفقة نشطة، نفحصها
     if state["active_trade"] is not None:
-        check_active_trade(state, current_price, now_ny)
-        save_state(state)
-        return
+        manage_trade(state, price, now_ny)
+        save_state(state); return
 
-    # 2. نفحص إشارات جديدة
-    signals = detect_signals(df5, df1h, state, now_ny)
-    if not signals:
-        print("لا توجد إشارات حالياً.")
-        save_state(state)
-        return
+    sig = check_signal(df5, df1h, state, now_utc, now_ny)
+    if sig is None:
+        print("لا إشارة.")
+        save_state(state); return
 
-    # 3. نأخذ أول إشارة فقط (كما في Pine: Max/Day)
-    sig = signals[0]
     state["active_trade"] = {
-        "model": sig["model"],
-        "direction": sig["direction"],
-        "entry": sig["entry"],
-        "sl": sig["sl"],
-        "tp1": sig["tp1"],
-        "tp2": sig["tp2"],
-        "tp3": sig["tp3"],
-        "tp1_hit": False,
-        "tp2_hit": False,
-        "tp3_hit": False,
+        **sig,
+        "tp1_hit": False, "tp2_hit": False, "tp3_hit": False,
         "entry_time": now_utc.isoformat()
     }
     state["trade_count_today"] += 1
@@ -449,9 +671,8 @@ def main():
         f"TP3: {sig['tp3']}\n\n"
         f"الوقت: {now_ny.strftime('%H:%M')} NY"
     )
-
     save_state(state)
-    print("✅ تم إرسال الإشارة وحفظ الحالة")
+    print("✅ إشارة مرسلة")
 
 
 if __name__ == "__main__":
