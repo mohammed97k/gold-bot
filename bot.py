@@ -34,4 +34,4 @@ def send_telegram_to_all(message):
 # --- نقطة البداية ---
 if __name__ == "__main__":
     print("🤖 بدء تشغيل البوت...")
-    send_telegram_to_all("🚀 رسالة اختبار من GitHub Actions!")
+send_telegram_to_all("ابو الجيس الشغل كلو تمام و مايكل يسلم عليكم")
