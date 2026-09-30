@@ -10,7 +10,6 @@ TELEGRAM_GROUP_CHAT_ID = os.environ.get("TELEGRAM_GROUP_CHAT_ID") # آيدي ا�
 
 def send_telegram_to_all(message):
     """دالة لإرسال رسالة لكل من الشخص والقناة"""
-    # قائمة بالآيديات اللي راح نرسل لها
     chat_ids = []
     if TELEGRAM_CHAT_ID:
         chat_ids.append(TELEGRAM_CHAT_ID)
@@ -34,4 +33,4 @@ def send_telegram_to_all(message):
 # --- نقطة البداية ---
 if __name__ == "__main__":
     print("🤖 بدء تشغيل البوت...")
-send_telegram_to_all("ابو الجيس الشغل كلو تمام و مايكل يسلم عليكم")
+    send_telegram_to_all("ابو الجيس الشغل كلو تمام و مايكل يسلم عليكم")
