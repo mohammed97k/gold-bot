@@ -2,7 +2,7 @@ name: Gold Trading Signals Bot
 
 on:
   schedule:
-    # يشتغل كل 5 دقائق من الإثنين للجمعة بتوقيت السوق
+    # يعمل كل 5 دقائق من الإثنين للجمعة بتوقيت السوق
     - cron: '*/5 * * * 1-5'
   workflow_dispatch:
 
@@ -20,10 +20,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install yfinance pandas numpy requests
+          pip install pandas numpy requests pytz
 
       - name: Run Strategy Bot
         env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python bot.py
