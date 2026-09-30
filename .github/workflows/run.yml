@@ -2,7 +2,6 @@ name: Gold Trading Signals Bot
 
 on:
   schedule:
-    # يعمل كل 5 دقائق من الإثنين للجمعة بتوقيت السوق
     - cron: '*/5 * * * 1-5'
   workflow_dispatch:
 
