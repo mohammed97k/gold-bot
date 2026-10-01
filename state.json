@@ -7,7 +7,7 @@
     "tp1": 4173.39,
     "tp2": 4169.33,
     "tp3": 4165.27,
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "entry_time": "2026-10-01T19:33:48.971883+00:00"
