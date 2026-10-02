@@ -12,68 +12,10 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# قائمة كل الـ endpoints المحتملة
-GET_ENDPOINTS = [
-    "/",
-    "/docs",
-    "/openapi.json",
-    "/v1",
-    "/v1/",
-    "/v1/openapi.json",
-    "/v1/sessions",
-    "/v1/session",
-    "/v1/brokers",
-    "/v1/broker",
-    "/v1/accounts/",
-    "/v1/accounts/me",
-    "/v1/me",
-    "/v1/instruments",
-    "/v1/symbols",
-    "/v1/market",
-    "/v1/market/candles",
-    "/v1/quotes",
-    "/v1/bars",
-    "/v1/history",
-    "/v1/data",
-    "/v1/ohlc",
-    "/v1/positions",
-    "/v1/trades",
-    "/v1/orders",
-]
-
-print("🔍 استكشاف TickerAll API...\n")
-
-for endpoint in GET_ENDPOINTS:
-    url = f"https://api.tickerall.com{endpoint}"
-    try:
-        r = requests.get(url, headers=headers, timeout=8)
-        status = r.status_code
-        text = r.text[:200].replace("\n", " ")
-        # نطبع بس النتائج المهمة
-        if status != 404:
-            print(f"✅ {endpoint}")
-            print(f"   Status: {status}")
-            print(f"   Response: {text}")
-            print()
-        else:
-            print(f"❌ {endpoint} (404)")
-    except Exception as e:
-        print(f"⚠️  {endpoint} -> {e}")
-
-# نجرب POST endpoints
-print("\n=== POST endpoints ===\n")
-POST_ENDPOINTS = [
-    "/v1/sessions",
-    "/v1/session",
-    "/v1/session/start",
-    "/v1/sessions/open",
-    "/v1/broker/session",
-    "/v1/connect",
-    "/v1/sessions/create",
-    "/v1/sessions/connect",
-    "/v1/accounts/connect",
-    "/v1/broker/connect",
-]
+# ============ فتح جلسة أولاً ============
+print("=" * 60)
+print("📌 فتح جلسة MT5...")
+print("=" * 60)
 
 session_payload = {
     "broker": "mt5",
@@ -82,18 +24,66 @@ session_payload = {
     "password": MT5_PASSWORD
 }
 
-for endpoint in POST_ENDPOINTS:
+account_id = None
+try:
+    r = requests.post("https://api.tickerall.com/v1/sessions",
+                      headers=headers, json=session_payload, timeout=25)
+    print(f"Status: {r.status_code}")
+    print(f"Response: {json.dumps(r.json(), indent=2, ensure_ascii=False)}")
+    if r.status_code == 200:
+        account_id = r.json().get("accountId")
+        print(f"\n✅ Account ID: {account_id}")
+except Exception as e:
+    print(f"❌ Error: {e}")
+
+if not account_id:
+    print("❌ ما نقدر نكمل بدون Account ID")
+    exit()
+
+# ============ استكشاف endpoints مع accountId ============
+print("\n" + "=" * 60)
+print(f"🔍 استكشاف endpoints مع accountId = {account_id}")
+print("=" * 60)
+
+GET_ENDPOINTS = [
+    f"/v1/accounts/{account_id}",
+    f"/v1/accounts/{account_id}/",
+    f"/v1/accounts/{account_id}/candles",
+    f"/v1/accounts/{account_id}/bars",
+    f"/v1/accounts/{account_id}/ohlc",
+    f"/v1/accounts/{account_id}/quotes",
+    f"/v1/accounts/{account_id}/symbols",
+    f"/v1/accounts/{account_id}/instruments",
+    f"/v1/accounts/{account_id}/market-data",
+    f"/v1/accounts/{account_id}/prices",
+    f"/v1/accounts/{account_id}/tick",
+    f"/v1/accounts/{account_id}/history",
+    f"/v1/accounts/{account_id}/positions",
+    f"/v1/accounts/{account_id}/info",
+    f"/v1/market-data/{account_id}",
+    f"/v1/market-data/{account_id}/candles",
+    f"/v1/marketdata/{account_id}",
+    f"/v1/md/{account_id}",
+    f"/v1/md/{account_id}/candles",
+    f"/v1/sessions/{account_id}",
+    f"/v1/sessions/{account_id}/candles",
+    f"/v1/data/{account_id}",
+    f"/v1/candles/{account_id}",
+    f"/v1/bars/{account_id}",
+]
+
+for endpoint in GET_ENDPOINTS:
     url = f"https://api.tickerall.com{endpoint}"
     try:
-        r = requests.post(url, headers=headers, json=session_payload, timeout=10)
+        r = requests.get(url, headers=headers,
+                         params={"symbol": "XAUUSD", "timeframe": "M5", "limit": 5},
+                         timeout=8)
         status = r.status_code
-        text = r.text[:300].replace("\n", " ")
         if status != 404:
-            print(f"✅ {endpoint}")
+            print(f"\n✅ {endpoint}")
             print(f"   Status: {status}")
-            print(f"   Response: {text}")
-            print()
+            print(f"   Response: {r.text[:600]}")
         else:
-            print(f"❌ {endpoint} (404)")
+            print(f"❌ {endpoint}")
     except Exception as e:
         print(f"⚠️  {endpoint} -> {e}")
