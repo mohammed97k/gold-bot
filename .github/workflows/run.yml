@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # <--- هذا السطر مهم جداً
+  contents: write
 
 jobs:
   run-strategy:
@@ -14,8 +14,6 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,18 +24,10 @@ jobs:
         run: |
           pip install pandas numpy requests pytz
 
-      - name: Run Strategy Bot
+      - name: Run Test TickerAll
         env:
-          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_GROUP_CHAT_ID: ${{ secrets.TELEGRAM_GROUP_CHAT_ID }}
-        run: python -u bot.py
-
-      - name: Commit state file
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add state.json || true
-          git diff --staged --quiet || git commit -m "Update state [skip ci]"
-          git push || true
+          TICKERALL_API_KEY: ${{ secrets.TICKERALL_API_KEY }}
+          MT5_PASSWORD: ${{ secrets.MT5_PASSWORD }}
+          MT5_SERVER: ${{ secrets.MT5_SERVER }}
+          MT5_ACCOUNT: ${{ secrets.MT5_ACCOUNT }}
+        run: python -u test_tickerall.py
