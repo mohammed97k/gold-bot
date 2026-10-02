@@ -24,10 +24,21 @@ jobs:
         run: |
           pip install pandas numpy requests pytz
 
-      - name: Run Test TickerAll
+      - name: Run Strategy Bot
         env:
           TICKERALL_API_KEY: ${{ secrets.TICKERALL_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_GROUP_CHAT_ID: ${{ secrets.TELEGRAM_GROUP_CHAT_ID }}
           MT5_PASSWORD: ${{ secrets.MT5_PASSWORD }}
           MT5_SERVER: ${{ secrets.MT5_SERVER }}
           MT5_ACCOUNT: ${{ secrets.MT5_ACCOUNT }}
-        run: python -u test_tickerall.py
+        run: python -u bot.py
+
+      - name: Commit state file
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add state.json || true
+          git diff --staged --quiet || git commit -m "Update state [skip ci]"
+          git push || true
