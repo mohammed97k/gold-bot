@@ -1,10 +1,7 @@
 {
   "active_trade": null,
   "last_entry_time": "2026-10-01T19:33:48.971883+00:00",
-  "trade_count_today": 3,
-  "last_day": "2026-10-01",
-  "models_done_today": [
-    "SB-LDN/Judas/AM",
-    "OB"
-  ]
+  "trade_count_today": 0,
+  "last_day": "2026-10-02",
+  "models_done_today": []
 }
