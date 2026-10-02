@@ -54,7 +54,6 @@ def send_telegram(message):
 
 # ==================== TickerAll: فتح جلسة ====================
 def open_session():
-    """يفتح جلسة MT5 ويرجع accountId"""
     url = f"{BASE_URL}/v1/sessions"
     headers = {
         "Authorization": f"Bearer {TICKERALL_API_KEY}",
@@ -69,8 +68,7 @@ def open_session():
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=30)
         if r.status_code == 200:
-            data = r.json()
-            account_id = data.get("accountId")
+            account_id = r.json().get("accountId")
             print(f"✅ Session opened: {account_id}")
             return account_id
         else:
@@ -82,11 +80,16 @@ def open_session():
 
 
 # ==================== TickerAll: جلب الشمعات ====================
-def fetch_candles(account_id, symbol, timeframe, limit=500):
-    """يجلب الشمعات من TickerAll"""
+def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500):
+    """يجلب الشمعات من TickerAll مع عدد ساعات كافي"""
     url = f"{BASE_URL}/v1/accounts/{account_id}/candles"
     headers = {"Authorization": f"Bearer {TICKERALL_API_KEY}"}
-    params = {"symbol": symbol, "timeframe": timeframe, "limit": limit}
+    params = {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "limit": limit,
+        "hours": hours
+    }
     try:
         r = requests.get(url, headers=headers, params=params, timeout=90)
         if r.status_code != 200:
@@ -153,7 +156,7 @@ def ta_highest(series, length):
     return series.rolling(length).max()
 
 
-# ==================== الجلسات (نيويورك) ====================
+# ==================== الجلسات ====================
 def tm(dt, h1, m1, h2, m2):
     t = dt.hour * 60 + dt.minute
     return (h1 * 60 + m1) <= t < (h2 * 60 + m2)
@@ -204,7 +207,6 @@ def manage_trade(state, current_price, now_utc):
     d, e, sl, tp1, tp2, tp3 = t["direction"], t["entry"], t["sl"], t["tp1"], t["tp2"], t["tp3"]
     time_str = fmt_mosul(now_utc)
 
-    # فحص الستوب
     if (d == "BUY" and current_price <= sl) or (d == "SELL" and current_price >= sl):
         if t["tp1_hit"]:
             send_telegram(f"⚖️ ضرب الستوب بعد TP1 (Break Even)\nالنموذج: {t['model']}\nالاتجاه: {d}\nالدخول: {e}\nالوقت: {time_str}")
@@ -213,7 +215,6 @@ def manage_trade(state, current_price, now_utc):
         state["active_trade"] = None
         return
 
-    # فحص الأهداف
     if not t["tp1_hit"] and ((d == "BUY" and current_price >= tp1) or (d == "SELL" and current_price <= tp1)):
         t["tp1_hit"] = True
         send_telegram(f"🎯 ضربنا الهدف الأول! احجز ربحك\nالنموذج: {t['model']}\nالاتجاه: {d}\nTP1: {tp1}\nالوقت: {time_str}")
@@ -289,7 +290,6 @@ def build_context(df):
         bull_mss[i], bull_mss_bar[i] = cbm, cbmbar
         bear_mss[i], bear_mss_bar[i] = csm, csmbar
 
-    # FVG
     bTop = np.full(n, np.nan); bBot = np.full(n, np.nan)
     bBar = np.full(n, -1, dtype=int); bActive = np.zeros(n, dtype=bool)
     sTop = np.full(n, np.nan); sBot = np.full(n, np.nan)
@@ -312,7 +312,6 @@ def build_context(df):
     bCE = np.where(bActive, (bTop + bBot) / 2.0, np.nan)
     sCE = np.where(sActive, (sTop + sBot) / 2.0, np.nan)
 
-    # OB
     bOBHigh = np.full(n, np.nan); bOBLow = np.full(n, np.nan); bOBMT = np.full(n, np.nan)
     bOBBar = np.full(n, -1, dtype=int); bOBActive = np.zeros(n, dtype=bool)
     sOBHigh = np.full(n, np.nan); sOBLow = np.full(n, np.nan); sOBMT = np.full(n, np.nan)
@@ -339,7 +338,6 @@ def build_context(df):
         sOBHigh[i], sOBLow[i], sOBMT[i] = csoH, csoL, csoMT
         sOBBar[i], sOBActive[i] = csoBar, csoAct
 
-    # Breaker (لـ Mitigation)
     bBrkHigh = np.full(n, np.nan); bBrkLow = np.full(n, np.nan)
     bBrkBar = np.full(n, -1, dtype=int); bBrkActive = np.zeros(n, dtype=bool)
     sBrkHigh = np.full(n, np.nan); sBrkLow = np.full(n, np.nan)
@@ -365,7 +363,6 @@ def build_context(df):
     bBrkCE = np.where(bBrkActive, (bBrkHigh + bBrkLow) / 2.0, np.nan)
     sBrkCE = np.where(sBrkActive, (sBrkHigh + sBrkLow) / 2.0, np.nan)
 
-    # EQH/EQL
     eq_tol = atr * 0.1
     eqHighs = np.zeros(n, dtype=bool)
     eqLows = np.zeros(n, dtype=bool)
@@ -482,16 +479,19 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
     i = len(df5) - 1
     atr = ctx["atr"][i]
     if np.isnan(atr):
+        print("⚠️ ATR NaN")
         return None
 
     df1h = df1h.copy()
     df1h["ema200"] = ta_ema(df1h["close"], 200)
     df1h["ema50"] = ta_ema(df1h["close"], 50)
     h1 = df1h.iloc[-2]
-    trend_up = h1["close"] > h1["ema200"]
-    trend_down = h1["close"] < h1["ema200"]
-    strong_bull = trend_up and h1["close"] > h1["ema50"]
-    strong_bear = trend_down and h1["close"] < h1["ema50"]
+    if pd.isna(h1["ema200"]):
+        print(f"⚠️ H1 EMA200 NaN — عدد الشمعات: {len(df1h)}")
+    trend_up = h1["close"] > h1["ema200"] if not pd.isna(h1["ema200"]) else False
+    trend_down = h1["close"] < h1["ema200"] if not pd.isna(h1["ema200"]) else False
+    strong_bull = trend_up and (not pd.isna(h1["ema50"])) and h1["close"] > h1["ema50"]
+    strong_bear = trend_down and (not pd.isna(h1["ema50"])) and h1["close"] < h1["ema50"]
 
     sessions = session_flags(now_ny)
     active_sessions = [k for k, v in sessions.items() if v]
@@ -499,8 +499,10 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
         print(f"⏰ لا جلسة نشطة. الوقت NY: {now_ny.strftime('%H:%M')}")
         return None
     if is_blackout(now_ny):
+        print("⏰ Lunch Break")
         return None
     if state["trade_count_today"] >= MAX_TRADES_PER_DAY:
+        print(f"⏰ Max/Day ({state['trade_count_today']})")
         return None
 
     if state["last_entry_time"]:
@@ -508,6 +510,7 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
         bars_since = int((now_utc - last_dt).total_seconds() / 300)
         cd = COOLDOWN_STRONG if (strong_bull or strong_bear) else COOLDOWN_NORMAL
         if bars_since < cd:
+            print(f"⏰ Cooldown: {bars_since}/{cd}")
             return None
 
     s1L = ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
@@ -559,12 +562,13 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
     tcpS = strong_bear and ctx["recentBearMSS"][i] and ctx["sActive"][i] and ctx["sTop"][i] > ctx["sCE"][i] > df5["close"].iloc[i]
 
     fvgL = strong_bull and ctx["bActive"][i] and ctx["bBot"][i] < ctx["bCE"][i] < df5["close"].iloc[i]
-    fvgS = strong_bear and ctx["sActive"][i] and ctx["sTop"][i] > ctx["sCE"][i] > df5["close"].iloc[i]
+    fvgS = strong_bear and ctx["sActive"][i] and ctx["sTop"][i] > ctx["sCE"][i] < df5["close"].iloc[i]
 
     sigL = s1L or s17L or s18L or s20L or s22L or s24L or s26L or s27L or s29L or s30L or s32L or s33L or s35L or s36L or s37L or tcpL or fvgL
     sigS = s1S or s17S or s18S or s20S or s22S or s24S or s26S or s27S or s29S or s30S or s32S or s33S or s35S or s36S or s37S or tcpS or fvgS
 
     if not (sigL or sigS):
+        print(f"لا إشارة. Trend: {'UP' if trend_up else 'DOWN' if trend_down else 'NONE'} | Sessions: {active_sessions}")
         return None
 
     model = "Unknown"
@@ -609,10 +613,12 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
         direction = "SELL"
 
     if np.isnan(entry) or np.isnan(sl_level):
+        print("⚠️ Entry أو SL = NaN")
         return None
 
     sl_pts = abs(entry - sl_level) * MULT
     if sl_pts < MIN_SL_PTS or sl_pts > MAX_SL_PTS:
+        print(f"⚠️ SL خارج النطاق: {sl_pts:.1f}")
         return None
 
     sl_dist = abs(entry - sl_level)
@@ -641,16 +647,17 @@ def main():
         state["models_done_today"] = []
         state["last_day"] = today
 
-    # فتح جلسة جديدة
     account_id = open_session()
     if not account_id:
         send_telegram("❌ فشل فتح الجلسة مع TickerAll")
         save_state(state)
         return
 
-    # جلب الشمعات
-    df5 = fetch_candles(account_id, SYMBOL, "M5", 500)
-    df1h = fetch_candles(account_id, SYMBOL, "H1", 500)
+    # M5: نطلب 500 ساعة (لكن الـ API يعطي 200 شمعة كحد أقصى)
+    df5 = fetch_candles(account_id, SYMBOL, "M5", 500, 42)
+    # H1: نطلب 500 ساعة عشان نجيب 500 شمعة ساعة
+    df1h = fetch_candles(account_id, SYMBOL, "H1", 500, 500)
+
     if df5 is None or df1h is None:
         send_telegram("❌ فشل جلب البيانات")
         save_state(state)
@@ -659,16 +666,13 @@ def main():
     price = float(df5.iloc[-1]["close"])
     print(f"السعر: {price} | Mosul: {fmt_mosul(now_utc)} | NY: {now_ny.strftime('%H:%M')}")
 
-    # إدارة الصفقة النشطة
     if state["active_trade"] is not None:
         manage_trade(state, price, now_utc)
         save_state(state)
         return
 
-    # فحص إشارة جديدة
     sig = check_signal(df5, df1h, state, now_utc, now_ny)
     if sig is None:
-        print("لا إشارة.")
         save_state(state)
         return
 
