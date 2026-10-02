@@ -1,7 +1,21 @@
 {
-  "active_trade": null,
-  "last_entry_time": "2026-10-01T19:33:48.971883+00:00",
-  "trade_count_today": 0,
+  "active_trade": {
+    "model": "SB-LDN/Judas/AM",
+    "direction": "SELL",
+    "entry": 4180.51,
+    "sl": 4194.98,
+    "tp1": 4166.05,
+    "tp2": 4151.59,
+    "tp3": 4137.12,
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "entry_time": "2026-10-02T07:22:57.467099+00:00"
+  },
+  "last_entry_time": "2026-10-02T07:22:57.467099+00:00",
+  "trade_count_today": 1,
   "last_day": "2026-10-02",
-  "models_done_today": []
+  "models_done_today": [
+    "SB-LDN/Judas/AM"
+  ]
 }
