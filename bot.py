@@ -179,18 +179,49 @@ def save_state(s):
     print(f"💾 State saved: active_trade={'✅' if s.get('active_trade') else '❌'}")
 
 
+# ==================== إدارة الصفقة (مع Time Exit) ====================
 def manage_trade(state, current_price, now_utc):
     print(f"   [manage_trade] بدء...")
     t = state["active_trade"]
     if t is None:
         print(f"   [manage_trade] لا صفقة نشطة")
         return
+    
     print(f"   [manage_trade] صفقة: {t.get('model')} {t.get('direction')} @ {t.get('entry')}")
     print(f"   [manage_trade] SL={t.get('sl')} TP1={t.get('tp1')} TP2={t.get('tp2')} TP3={t.get('tp3')}")
     print(f"   [manage_trade] tp1_hit={t.get('tp1_hit')} tp2_hit={t.get('tp2_hit')} tp3_hit={t.get('tp3_hit')}")
+    
     d, e, sl, tp1, tp2, tp3 = t["direction"], t["entry"], t["sl"], t["tp1"], t["tp2"], t["tp3"]
     time_str = fmt_mosul(now_utc)
 
+    # ============ TIME-BASED EXIT (60 شمعة = 5 ساعات) ============
+    entry_time_str = t.get("entry_time")
+    if entry_time_str:
+        try:
+            entry_dt = datetime.fromisoformat(entry_time_str)
+            elapsed_seconds = (now_utc - entry_dt).total_seconds()
+            bars_elapsed = elapsed_seconds / 300  # 5 دقائق لكل شمعة
+            print(f"   [manage_trade] Bars elapsed: {bars_elapsed:.1f}/{MAX_BARS_TRADE}")
+            if bars_elapsed >= MAX_BARS_TRADE:
+                # خروج بالوقت
+                pnl_pts = (e - current_price) if d == "SELL" else (current_price - e)
+                pnl_pts *= MULT
+                print(f"   [manage_trade] ⏰ Time Exit! PnL = {pnl_pts:.2f}")
+                send_telegram(
+                    f"⏰ خروج بالوقت (60 شمعة)\n"
+                    f"النموذج: {t['model']}\n"
+                    f"الاتجاه: {d}\n"
+                    f"الدخول: {e}\n"
+                    f"السعر الحالي: {current_price}\n"
+                    f"الربح/الخسارة: {pnl_pts:+.2f} pts\n"
+                    f"الوقت: {time_str}"
+                )
+                state["active_trade"] = None
+                return
+        except Exception as e2:
+            print(f"   [manage_trade] ⚠️ Time check error: {e2}")
+
+    # فحص الستوب
     if (d == "BUY" and current_price <= sl) or (d == "SELL" and current_price >= sl):
         print(f"   [manage_trade] 🛑 ضرب الستوب")
         if t["tp1_hit"]:
@@ -200,6 +231,7 @@ def manage_trade(state, current_price, now_utc):
         state["active_trade"] = None
         return
 
+    # فحص الأهداف
     if not t["tp1_hit"] and ((d == "BUY" and current_price >= tp1) or (d == "SELL" and current_price <= tp1)):
         t["tp1_hit"] = True
         print(f"   [manage_trade] 🎯 TP1")
@@ -420,18 +452,20 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
         active_sessions = [k for k, v in sessions.items() if v]
         print(f"   [check_signal] Sessions: {active_sessions}")
         if not active_sessions:
+            print(f"   [check_signal] ❌ لا جلسة نشطة")
             return None
         if is_blackout(now_ny):
+            print(f"   [check_signal] ❌ Lunch break")
             return None
         if state["trade_count_today"] >= MAX_TRADES_PER_DAY:
-            print(f"   [check_signal] Max/Day")
+            print(f"   [check_signal] ❌ Max/Day")
             return None
         if state["last_entry_time"]:
             last_dt = datetime.fromisoformat(state["last_entry_time"])
             bars_since = int((now_utc - last_dt).total_seconds() / 300)
             cd = COOLDOWN_STRONG if (strong_bull or strong_bear) else COOLDOWN_NORMAL
             if bars_since < cd:
-                print(f"   [check_signal] Cooldown {bars_since}/{cd}")
+                print(f"   [check_signal] ❌ Cooldown {bars_since}/{cd}")
                 return None
 
         s1L = ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
@@ -519,9 +553,11 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
             direction = "SELL"
 
         if np.isnan(entry) or np.isnan(sl_level):
+            print(f"   [check_signal] ❌ NaN")
             return None
         sl_pts = abs(entry - sl_level) * MULT
         if sl_pts < MIN_SL_PTS or sl_pts > MAX_SL_PTS:
+            print(f"   [check_signal] ❌ SL pts = {sl_pts:.1f}")
             return None
         sl_dist = abs(entry - sl_level)
         if direction == "BUY":
