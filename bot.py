@@ -166,48 +166,64 @@ def is_blackout(dt):
 def load_state():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
-            return json.load(f)
+            s = json.load(f)
+            print(f"📖 State loaded: active_trade={'✅' if s.get('active_trade') else '❌'} | trades_today={s.get('trade_count_today', 0)}")
+            return s
+    print("📖 State file جديد")
     return {"active_trade": None, "last_entry_time": None, "trade_count_today": 0, "last_day": None, "models_done_today": []}
 
 
 def save_state(s):
     with open(STATE_FILE, "w") as f:
         json.dump(s, f, indent=2)
+    print(f"💾 State saved: active_trade={'✅' if s.get('active_trade') else '❌'}")
 
 
 def manage_trade(state, current_price, now_utc):
+    print(f"   [manage_trade] بدء...")
     t = state["active_trade"]
     if t is None:
+        print(f"   [manage_trade] لا صفقة نشطة")
         return
+    print(f"   [manage_trade] صفقة: {t.get('model')} {t.get('direction')} @ {t.get('entry')}")
+    print(f"   [manage_trade] SL={t.get('sl')} TP1={t.get('tp1')} TP2={t.get('tp2')} TP3={t.get('tp3')}")
+    print(f"   [manage_trade] tp1_hit={t.get('tp1_hit')} tp2_hit={t.get('tp2_hit')} tp3_hit={t.get('tp3_hit')}")
     d, e, sl, tp1, tp2, tp3 = t["direction"], t["entry"], t["sl"], t["tp1"], t["tp2"], t["tp3"]
     time_str = fmt_mosul(now_utc)
+
     if (d == "BUY" and current_price <= sl) or (d == "SELL" and current_price >= sl):
+        print(f"   [manage_trade] 🛑 ضرب الستوب")
         if t["tp1_hit"]:
             send_telegram(f"⚖️ ضرب الستوب بعد TP1 (BE)\n{t['model']} {d}\n{e} | {time_str}")
         else:
             send_telegram(f"🛑 ضرب الستوب!\n{t['model']} {d}\n{e}\n{time_str}")
         state["active_trade"] = None
         return
+
     if not t["tp1_hit"] and ((d == "BUY" and current_price >= tp1) or (d == "SELL" and current_price <= tp1)):
         t["tp1_hit"] = True
+        print(f"   [manage_trade] 🎯 TP1")
         send_telegram(f"🎯 الهدف الأول!\n{t['model']} {d}\nTP1: {tp1}\n{time_str}")
+
     if t["tp1_hit"] and not t["tp2_hit"] and ((d == "BUY" and current_price >= tp2) or (d == "SELL" and current_price <= tp2)):
         t["tp2_hit"] = True
+        print(f"   [manage_trade] 🎯 TP2")
         send_telegram(f"🎯🎯 الهدف الثاني!\n{t['model']}\nTP2: {tp2}\n{time_str}")
+
     if t["tp2_hit"] and not t["tp3_hit"] and ((d == "BUY" and current_price >= tp3) or (d == "SELL" and current_price <= tp3)):
         t["tp3_hit"] = True
+        print(f"   [manage_trade] 🎯 TP3")
         send_telegram(f"🎯🎯🎯 الهدف الثالث! دبچة 🕺\n{t['model']}\nTP3: {tp3}\n{time_str}")
         state["active_trade"] = None
 
+    print(f"   [manage_trade] ✅ اكتمل")
+
 
 def build_context(df):
-    print("      [build_context] بدء...")
     n = len(df)
     atr = ta_atr(df, ATR_PERIOD).values
-    print(f"      [build_context] ATR محسوب")
     sh = ta_pivothigh(df["high"].values, 3, 3)
     sl = ta_pivotlow(df["low"].values, 3, 3)
-    print(f"      [build_context] Pivots محسوبة")
 
     last_sh = np.full(n, np.nan); last_sl = np.full(n, np.nan)
     cur_sh, cur_sl = np.nan, np.nan
@@ -232,7 +248,6 @@ def build_context(df):
         if cek and (i - cebr) > 20: cek = False
         bull_sweep_ok[i], bull_sweep_bar[i], bull_sweep_low[i] = cbok, cbbr, cbbl
         bear_sweep_ok[i], bear_sweep_bar[i], bear_sweep_high[i] = cek, cebr, cebh
-    print(f"      [build_context] Sweeps محسوبة")
 
     bull_mss = np.zeros(n, dtype=bool); bull_mss_bar = np.full(n, -1, dtype=int)
     bear_mss = np.zeros(n, dtype=bool); bear_mss_bar = np.full(n, -1, dtype=int)
@@ -247,7 +262,6 @@ def build_context(df):
         if csm and (i - csmbar) > 15: csm = False
         bull_mss[i], bull_mss_bar[i] = cbm, cbmbar
         bear_mss[i], bear_mss_bar[i] = csm, csmbar
-    print(f"      [build_context] MSS محسوب")
 
     bTop = np.full(n, np.nan); bBot = np.full(n, np.nan); bBar = np.full(n, -1, dtype=int); bActive = np.zeros(n, dtype=bool)
     sTop = np.full(n, np.nan); sBot = np.full(n, np.nan); sBar = np.full(n, -1, dtype=int); sActive = np.zeros(n, dtype=bool)
@@ -263,7 +277,6 @@ def build_context(df):
         sTop[i], sBot[i], sBar[i], sActive[i] = cst, csb, csbar, csact
     bCE = np.where(bActive, (bTop + bBot) / 2.0, np.nan)
     sCE = np.where(sActive, (sTop + sBot) / 2.0, np.nan)
-    print(f"      [build_context] FVG محسوب")
 
     bOBHigh = np.full(n, np.nan); bOBLow = np.full(n, np.nan); bOBMT = np.full(n, np.nan)
     bOBBar = np.full(n, -1, dtype=int); bOBActive = np.zeros(n, dtype=bool)
@@ -283,7 +296,6 @@ def build_context(df):
         bOBBar[i], bOBActive[i] = cboBar, cboAct
         sOBHigh[i], sOBLow[i], sOBMT[i] = csoH, csoL, csoMT
         sOBBar[i], sOBActive[i] = csoBar, csoAct
-    print(f"      [build_context] OB محسوب")
 
     bBrkHigh = np.full(n, np.nan); bBrkLow = np.full(n, np.nan); bBrkBar = np.full(n, -1, dtype=int); bBrkActive = np.zeros(n, dtype=bool)
     sBrkHigh = np.full(n, np.nan); sBrkLow = np.full(n, np.nan); sBrkBar = np.full(n, -1, dtype=int); sBrkActive = np.zeros(n, dtype=bool)
@@ -355,7 +367,6 @@ def build_context(df):
     orgTouchBull = np.nan_to_num(orgTouchBull).astype(bool); orgTouchBear = np.nan_to_num(orgTouchBear).astype(bool)
     recentBullMSS = bull_mss & ((np.arange(n) - bull_mss_bar) <= 10)
     recentBearMSS = bear_mss & ((np.arange(n) - bear_mss_bar) <= 10)
-    print(f"      [build_context] ✅ اكتمل")
     return {
         "atr": atr, "last_sh": last_sh, "last_sl": last_sl,
         "bull_sweep_ok": bull_sweep_ok, "bear_sweep_ok": bear_sweep_ok,
@@ -394,41 +405,35 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
         if np.isnan(atr):
             print("   [check_signal] ATR NaN")
             return None
-        print(f"   [check_signal] ATR = {atr:.2f}")
 
         df1h = df1h.copy()
         df1h["ema200"] = ta_ema(df1h["close"], 200)
         df1h["ema50"] = ta_ema(df1h["close"], 50)
         h1 = df1h.iloc[-2]
-        print(f"   [check_signal] H1 EMA200 = {h1['ema200']:.2f}, EMA50 = {h1['ema50']:.2f}, Close = {h1['close']:.2f}")
         trend_up = h1["close"] > h1["ema200"] if not pd.isna(h1["ema200"]) else False
         trend_down = h1["close"] < h1["ema200"] if not pd.isna(h1["ema200"]) else False
         strong_bull = trend_up and (not pd.isna(h1["ema50"])) and h1["close"] > h1["ema50"]
         strong_bear = trend_down and (not pd.isna(h1["ema50"])) and h1["close"] < h1["ema50"]
-        print(f"   [check_signal] Trend: up={trend_up} down={trend_down} strong_bull={strong_bull} strong_bear={strong_bear}")
+        print(f"   [check_signal] H1: Close={h1['close']:.2f} EMA200={h1['ema200']:.2f} Trend={'UP' if trend_up else 'DOWN' if trend_down else 'NONE'}")
 
         sessions = session_flags(now_ny)
         active_sessions = [k for k, v in sessions.items() if v]
         print(f"   [check_signal] Sessions: {active_sessions}")
         if not active_sessions:
-            print(f"   [check_signal] ❌ لا جلسة نشطة")
             return None
         if is_blackout(now_ny):
-            print(f"   [check_signal] ❌ Lunch break")
             return None
         if state["trade_count_today"] >= MAX_TRADES_PER_DAY:
-            print(f"   [check_signal] ❌ Max/Day")
+            print(f"   [check_signal] Max/Day")
             return None
         if state["last_entry_time"]:
             last_dt = datetime.fromisoformat(state["last_entry_time"])
             bars_since = int((now_utc - last_dt).total_seconds() / 300)
             cd = COOLDOWN_STRONG if (strong_bull or strong_bear) else COOLDOWN_NORMAL
-            print(f"   [check_signal] Cooldown: {bars_since}/{cd}")
             if bars_since < cd:
-                print(f"   [check_signal] ❌ Cooldown")
+                print(f"   [check_signal] Cooldown {bars_since}/{cd}")
                 return None
 
-        print("   [check_signal] فحص النماذج...")
         s1L = ctx["bull_mss"][i] and ctx["bActive"][i] and trend_up
         s1S = ctx["bear_mss"][i] and ctx["sActive"][i] and trend_down
         s17L = ctx["bOBActive"][i] and ctx["bOBLow"][i] <= df5["low"].iloc[i] <= ctx["bOBMT"][i] and trend_up
@@ -490,7 +495,6 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
         elif s37L or s37S: model = "P3"
         elif tcpL or tcpS: model = "TCP"
         elif fvgL or fvgS: model = "FVG"
-        print(f"   [check_signal] Model = {model}")
 
         close = df5["close"].iloc[i]
         if sigL:
@@ -514,21 +518,17 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
                 entry = close; sl_level = ctx["bear_sweep_high"][i] + atr * 0.3
             direction = "SELL"
 
-        print(f"   [check_signal] Entry = {entry}, SL = {sl_level}")
         if np.isnan(entry) or np.isnan(sl_level):
-            print(f"   [check_signal] ❌ NaN")
             return None
         sl_pts = abs(entry - sl_level) * MULT
-        print(f"   [check_signal] SL pts = {sl_pts:.1f}")
         if sl_pts < MIN_SL_PTS or sl_pts > MAX_SL_PTS:
-            print(f"   [check_signal] ❌ SL خارج النطاق")
             return None
         sl_dist = abs(entry - sl_level)
         if direction == "BUY":
             tp1, tp2, tp3 = entry + sl_dist*TP1_R, entry + sl_dist*TP2_R, entry + sl_dist*TP3_R
         else:
             tp1, tp2, tp3 = entry - sl_dist*TP1_R, entry - sl_dist*TP2_R, entry - sl_dist*TP3_R
-        print(f"   [check_signal] ✅ إشارة! {direction}")
+        print(f"   [check_signal] ✅ {direction} {model} @ {entry}")
         return {"model": model, "direction": direction, "entry": round(entry, 2), "sl": round(sl_level, 2),
                 "tp1": round(tp1, 2), "tp2": round(tp2, 2), "tp3": round(tp3, 2)}
     except Exception as e:
@@ -571,7 +571,9 @@ def main():
         if state["active_trade"] is not None:
             print("📌 إدارة صفقة نشطة...")
             manage_trade(state, price, now_utc)
-            save_state(state); return
+            save_state(state)
+            print("✅ انتهى — تم إدارة الصفقة")
+            return
 
         print("📌 فحص إشارة...")
         sig = check_signal(df5, df1h, state, now_utc, now_ny)
@@ -591,7 +593,10 @@ def main():
     except Exception as e:
         print(f"❌❌❌ خطأ في main: {e}")
         traceback.print_exc()
-        send_telegram(f"❌ خطأ: {e}")
+        try:
+            send_telegram(f"❌ خطأ: {e}")
+        except:
+            pass
 
 
 if __name__ == "__main__":
