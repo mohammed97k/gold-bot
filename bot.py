@@ -42,6 +42,7 @@ OB_EXPIRY = 15
 MSS_EXPIRY = 15
 SWEEP_EXPIRY = 20
 BRK_EXPIRY = 20
+STALE_DATA_MINUTES = 30  # ⬅️ جديد: حد أقصى لعمر الشمعة
 
 
 def fmt_mosul(dt_utc):
@@ -121,16 +122,10 @@ def ta_ema(series, length):
 
 
 def ta_pivothigh(highs, left, right):
-    """
-    محاكاة ta.pivothigh في Pine:
-    - Pine يعتبر القمة عند مؤشر i-left إذا كانت أعلى من left شمعات قبلها و right شمعات بعدها
-    - لكن القمة تظهر في القيمة عند i (بعد أن يكتمل الـ right)
-    """
     n = len(highs)
     result = np.full(n, np.nan)
     for i in range(left, n - right):
         window = highs[i-left:i+right+1]
-        # القمة تظهر عند i+right (بعد أن تكتمل الشمعات)
         if highs[i] == window.max() and (window == highs[i]).sum() == 1:
             result[i + right] = highs[i]
     return result
@@ -160,7 +155,6 @@ def tm(dt, h1, m1, h2, m2):
 
 
 def session_flags(dt):
-    """مطابق لـ Pine: كل جلسة منفصلة"""
     return {
         "LondonO": tm(dt, 2, 0, 3, 0),
         "SB-LDN":  tm(dt, 3, 0, 4, 0),
@@ -255,7 +249,6 @@ def build_context(df):
     sh = ta_pivothigh(df["high"].values, PIVOT_LEFT, PIVOT_RIGHT)
     sl = ta_pivotlow(df["low"].values, PIVOT_LEFT, PIVOT_RIGHT)
 
-    # last_sh / last_sl متتبعة
     last_sh = np.full(n, np.nan)
     last_sl = np.full(n, np.nan)
     cur_sh, cur_sl = np.nan, np.nan
@@ -269,16 +262,17 @@ def build_context(df):
     prev_sh = np.full(n, np.nan)
     prev_sl = np.full(n, np.nan)
     psh, psl = np.nan, np.nan
+    sh_seen = np.nan
+    sl_seen = np.nan
     for i in range(n):
-        # عند ظهور pivot جديد، خزّن القمة السابقة
         if not np.isnan(sh[i]):
-            if not np.isnan(cur_sh):
-                psh = cur_sh
-            cur_sh = sh[i]  # نحدّث
+            if not np.isnan(sh_seen):
+                psh = sh_seen
+            sh_seen = sh[i]
         if not np.isnan(sl[i]):
-            if not np.isnan(cur_sl):
-                psl = cur_sl
-            cur_sl = sl[i]
+            if not np.isnan(sl_seen):
+                psl = sl_seen
+            sl_seen = sl[i]
         prev_sh[i] = psh
         prev_sl[i] = psl
 
@@ -300,7 +294,7 @@ def build_context(df):
         bull_sweep_ok[i], bull_sweep_low[i] = cbok, cbbl
         bear_sweep_ok[i], bear_sweep_high[i] = cek, cebh
 
-    # SHALLOW RUN (tick size = 0.01 للذهب)
+    # SHALLOW RUN
     tick = 0.01
     shallowBull = (df["low"].values < recent_low) & (df["low"].values > (recent_low - 3 * tick)) & (df["close"].values > recent_low)
     shallowBear = (df["high"].values > recent_high) & (df["high"].values < (recent_high + 3 * tick)) & (df["close"].values < recent_high)
@@ -518,7 +512,6 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
         print(f"   [check_signal] H1: Close={h1['close']:.2f} EMA200={h1['ema200']:.2f} Trend={'UP' if trend_up else 'DOWN' if trend_down else 'NONE'}")
 
         sessions = session_flags(now_ny)
-        # anyKZ يشمل NFP و LondonO (مطابق لـ Pine)
         any_kz = any([
             sessions["LondonO"], sessions["SB-LDN"], sessions["Judas"],
             sessions["SB-AM"], sessions["2022-AM"], sessions["Lunch"],
@@ -536,7 +529,6 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
             print(f"   [check_signal] ❌ Max/Day")
             return None
 
-        # Cooldown: Pine يستخدم > (مو >=)
         if state["last_entry_time"]:
             last_dt = datetime.fromisoformat(state["last_entry_time"])
             bars_since = int((now_utc - last_dt).total_seconds() / 300)
@@ -545,106 +537,77 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
                 print(f"   [check_signal] ❌ Cooldown {bars_since}/{cd}")
                 return None
 
-        # isFlat + not pOn (نفترض isFlat لأننا ما ندخل إلا بعد ما نفحص)
-        canEnter = True  # لأننا فحصنا فوق
-
+        canEnter = True
         trendL = trend_up
         trendS = trend_down
 
-        # ========== SIGNALS ==========
-        # s1: SB-LDN (خاص بجلسة SB-LDN فقط)
         s1L = canEnter and sessions["SB-LDN"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s1S = canEnter and sessions["SB-LDN"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s2: Judas
         s2L = canEnter and sessions["Judas"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s2S = canEnter and sessions["Judas"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s3: SB-AM
         s3L = canEnter and sessions["SB-AM"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s3S = canEnter and sessions["SB-AM"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s4: 2022-AM
         s4L = canEnter and sessions["2022-AM"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s4S = canEnter and sessions["2022-AM"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s5: Lunch
         s5L = canEnter and sessions["Lunch"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s5S = canEnter and sessions["Lunch"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s6: SB-PM
         s6L = canEnter and sessions["SB-PM"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s6S = canEnter and sessions["SB-PM"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s7: MOC
         s7L = canEnter and sessions["MOC"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s7S = canEnter and sessions["MOC"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s10: NY-Open (يستخدم inJudas)
         s10L = canEnter and sessions["Judas"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s10S = canEnter and sessions["Judas"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
-        # s11: FOMC
         s11L = canEnter and sessions["FOMC"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s11S = canEnter and sessions["FOMC"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s17: OB
         s17L = canEnter and ctx["bOBActive"][i] and ctx["bOBLow"][i] <= df5["low"].iloc[i] <= ctx["bOBMT"][i] and trendL
         s17S = canEnter and ctx["sOBActive"][i] and ctx["sOBMT"][i] <= df5["high"].iloc[i] <= ctx["sOBHigh"][i] and trendS
 
-        # s18: Propulsion
         s18L = canEnter and ctx["bProp"][i] and ctx["bull_mss"][i] and trendL
         s18S = canEnter and ctx["sProp"][i] and ctx["bear_mss"][i] and trendS
 
-        # s20: Mitigation
         s20L = canEnter and ctx["mitBull"][i] and trendL
         s20S = canEnter and ctx["mitBear"][i] and trendS
 
-        # s22: EQL
         s22L = canEnter and ctx["eqLows"][i] and ctx["bull_sweep_ok"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s22S = canEnter and ctx["eqHighs"][i] and ctx["bear_sweep_ok"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s24: Shallow
         s24L = canEnter and ctx["shallowBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s24S = canEnter and ctx["shallowBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s26: Float
         s26L = canEnter and ctx["floatUp"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s26S = canEnter and ctx["floatDn"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s27: NDOG
         s27L = canEnter and ctx["ndogTouchBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s27S = canEnter and ctx["ndogTouchBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s29: ORG
         s29L = canEnter and ctx["orgTouchBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s29S = canEnter and ctx["orgTouchBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s30: BPR
         s30L = canEnter and ctx["bprBull"][i] and ctx["bull_mss"][i] and trendL
         s30S = canEnter and ctx["bprBear"][i] and ctx["bear_mss"][i] and trendS
 
-        # s32: Reject
         s32L = canEnter and ctx["rejTouchBull"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s32S = canEnter and ctx["rejTouchBear"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s33: Void
         s33L = canEnter and ctx["lqVoidUp"][i] and ctx["bull_mss"][i] and trendL
         s33S = canEnter and ctx["lqVoidDn"][i] and ctx["bear_mss"][i] and trendS
 
-        # s35: TGIF
         s35L = canEnter and (now_ny.weekday() == 4) and sessions["TGIF"] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s35S = canEnter and (now_ny.weekday() == 4) and sessions["TGIF"] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s36: Quarterly
         s36L = canEnter and ctx["q4"][i] and ctx["bull_mss"][i] and ctx["bActive"][i] and trendL
         s36S = canEnter and ctx["q4"][i] and ctx["bear_mss"][i] and ctx["sActive"][i] and trendS
 
-        # s37: P3
         s37L = canEnter and ctx["p3Bull"][i] and ctx["bActive"][i] and trendL
         s37S = canEnter and ctx["p3Bear"][i] and ctx["sActive"][i] and trendS
 
-        # TCP
         tcpL = canEnter and strong_bull and ctx["recentBullMSS"][i] and ctx["bActive"][i] and df5["low"].iloc[i] <= ctx["bCE"][i] and df5["close"].iloc[i] > ctx["bCE"][i] and df5["low"].iloc[i] > ctx["bBot"][i]
         tcpS = canEnter and strong_bear and ctx["recentBearMSS"][i] and ctx["sActive"][i] and df5["high"].iloc[i] >= ctx["sCE"][i] and df5["close"].iloc[i] < ctx["sCE"][i] and df5["high"].iloc[i] < ctx["sTop"][i]
 
-        # FVG
         fvgL = canEnter and strong_bull and ctx["bActive"][i] and df5["low"].iloc[i] <= ctx["bCE"][i] and df5["close"].iloc[i] > ctx["bCE"][i] and df5["close"].iloc[i] > ctx["bBot"][i]
         fvgS = canEnter and strong_bear and ctx["sActive"][i] and df5["high"].iloc[i] >= ctx["sCE"][i] and df5["close"].iloc[i] < ctx["sCE"][i] and df5["close"].iloc[i] < ctx["sTop"][i]
 
-        # BOS
         recentLowBreak = strong_bear and df5["low"].iloc[i] < ta_lowest(df5["low"], 10).shift(1).iloc[i]
         recentHighBreak = strong_bull and df5["high"].iloc[i] > ta_highest(df5["high"], 10).shift(1).iloc[i]
         bosL = canEnter and strong_bull and recentHighBreak and df5["close"].iloc[i] < df5["close"].iloc[i-1] and ctx["bActive"][i] and df5["low"].iloc[i] <= ctx["bCE"][i] and df5["close"].iloc[i] > ctx["bCE"][i]
@@ -658,7 +621,6 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
             print(f"   [check_signal] ❌ لا إشارة")
             return None
 
-        # Model Name (بنفس ترتيب Pine)
         model = "Unknown"
         if s1L or s1S: model = "SB-LDN"
         elif s2L or s2S: model = "Judas"
@@ -737,6 +699,13 @@ def main():
         now_utc = datetime.now(ZoneInfo("UTC"))
         now_ny = now_utc.astimezone(NY_TZ)
 
+        # ⬅️⬅️⬅️ التعديل 1: فحص الويكند ⬅️⬅️⬅️
+        if now_ny.weekday() >= 5:
+            day_name = "السبت" if now_ny.weekday() == 5 else "الأحد"
+            print(f"📅 الويكند ({day_name}) — البوت معطّل")
+            save_state(state)
+            return
+
         today = now_ny.date().isoformat()
         if state["last_day"] != today:
             state["trade_count_today"] = 0
@@ -758,6 +727,16 @@ def main():
             send_telegram("❌ فشل جلب البيانات")
             save_state(state); return
 
+        # ⬅️⬅️⬅️ التعديل 2: فحص البيانات القديمة ⬅️⬅️⬅️
+        last_candle_time = df5.iloc[-1]["datetime"]
+        minutes_old = (now_utc - last_candle_time).total_seconds() / 60
+        print(f"⏱️ عمر آخر شمعة: {minutes_old:.1f} دقيقة")
+        if minutes_old > STALE_DATA_MINUTES:
+            print(f"⚠️ البيانات قديمة ({minutes_old:.0f} دقيقة) — تخطي")
+            send_telegram(f"⚠️ السوق معزّل أو البيانات قديمة\nعمر آخر شمعة: {minutes_old:.0f} دقيقة\n(الحد المسموح: {STALE_DATA_MINUTES} دقيقة)")
+            save_state(state)
+            return
+
         price = float(df5.iloc[-1]["close"])
         print(f"💰 السعر: {price} | Mosul: {fmt_mosul(now_utc)} | NY: {now_ny.strftime('%H:%M')}")
 
@@ -774,7 +753,6 @@ def main():
             print("✅ انتهى — لا إشارة")
             save_state(state); return
 
-        # تحقق "Done" للأسماء
         model = sig["model"]
         if model in state["models_done_today"]:
             print(f"   [main] ⏭️ {model} مضروب اليوم — تخطي")
