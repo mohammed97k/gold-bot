@@ -5,9 +5,10 @@ on:
     - cron: '*/5 * * * 1-5'
   workflow_dispatch:
 
+# نمنع التشغيل المتزامن، بس ما نلغي اللي شغالة
 concurrency:
   group: gold-bot
-  cancel-in-progress: true    # يلغي أي تشغيلة قديمة إذا جديدة بدأت
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -18,6 +19,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -39,10 +42,13 @@ jobs:
           MT5_ACCOUNT: ${{ secrets.MT5_ACCOUNT }}
         run: python -u bot.py
 
-      - name: Commit state file
+      - name: Commit state file (with retry)
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git add state.json || true
-          git diff --staged --quiet || git commit -m "Update state [skip ci]"
-          git push || true
+          git diff --staged --quiet || git commit -m "Update state [skip ci]" || true
+          # محاولة الرفع مع rebase لتجنب التعارض
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && break || sleep 5
+          done
