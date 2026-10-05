@@ -1,17 +1,5 @@
 {
-  "active_trade": {
-    "model": "BPR",
-    "direction": "SELL",
-    "entry": 4161.75,
-    "sl": 4169.48,
-    "tp1": 4154.02,
-    "tp2": 4146.28,
-    "tp3": 4138.55,
-    "tp1_hit": true,
-    "tp2_hit": true,
-    "tp3_hit": false,
-    "entry_time": "2026-10-05T12:45:33.683713+00:00"
-  },
+  "active_trade": null,
   "last_entry_time": "2026-10-05T12:45:33.683713+00:00",
   "trade_count_today": 2,
   "last_day": "2026-10-05",
