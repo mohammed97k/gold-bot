@@ -1,17 +1,5 @@
 {
-  "active_trade": {
-    "model": "Judas",
-    "direction": "SELL",
-    "entry": 4139.38,
-    "sl": 4145.84,
-    "tp1": 4132.93,
-    "tp2": 4126.47,
-    "tp3": 4120.02,
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "entry_time": "2026-10-05T13:55:26.508901+00:00"
-  },
+  "active_trade": null,
   "last_entry_time": "2026-10-05T13:55:26.508901+00:00",
   "trade_count_today": 3,
   "last_day": "2026-10-05",
