@@ -44,7 +44,7 @@ OB_EXPIRY = 15
 MSS_EXPIRY = 15
 SWEEP_EXPIRY = 20
 BRK_EXPIRY = 20
-STALE_DATA_MINUTES = 30
+STALE_DATA_MINUTES = 240
 
 
 def fmt_mosul(dt_utc):
@@ -62,7 +62,6 @@ def send_telegram(message):
             print("TG Error: " + str(e))
 
 
-# ==================== فتح جلسة (مع Retry) ====================
 def open_session(max_retries=3):
     url = BASE_URL + "/v1/sessions"
     headers = {"Authorization": "Bearer " + TICKERALL_API_KEY, "Content-Type": "application/json"}
@@ -848,7 +847,7 @@ def main():
         print("Opening session...")
         account_id = open_session()
         if not account_id:
-            send_telegram("⚠️ Failed to open TickerAll session - possible signal missed")
+            send_telegram("Failed to open TickerAll session - possible signal missed")
             save_state(state)
             return
 
