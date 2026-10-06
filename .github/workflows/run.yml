@@ -1,23 +1,20 @@
-name: Gold Trading Signals Bot
+name: MSNR Bot Scan
 
 on:
-  schedule:
-    - cron: '*/5 * * * 1-5'
   workflow_dispatch:
 
-# نمنع التشغيل المتزامن، بس ما نلغي اللي شغالة
 concurrency:
-  group: gold-bot
-  cancel-in-progress: false
+  group: msnr-bot
+  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  run-strategy:
+  scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -25,30 +22,27 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          pip install pandas numpy requests pytz
+      - name: Install deps
+        run: pip install -r requirements.txt
 
-      - name: Run Strategy Bot
+      - name: Run scanner
         env:
-          TICKERALL_API_KEY: ${{ secrets.TICKERALL_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_GROUP_CHAT_ID: ${{ secrets.TELEGRAM_GROUP_CHAT_ID }}
-          MT5_PASSWORD: ${{ secrets.MT5_PASSWORD }}
-          MT5_SERVER: ${{ secrets.MT5_SERVER }}
-          MT5_ACCOUNT: ${{ secrets.MT5_ACCOUNT }}
+          TELEGRAM_GROUP_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_API_KEY }}
         run: python -u bot.py
 
-      - name: Commit state file (with retry)
+      - name: Save state
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add state.json || true
-          git diff --staged --quiet || git commit -m "Update state [skip ci]" || true
-          # محاولة الرفع مع rebase لتجنب التعارض
-          for i in 1 2 3; do
-            git pull --rebase origin main && git push origin HEAD:main && break || sleep 5
-          done
+          git config user.name "MSNR Bot"
+          git config user.email "bot@users.noreply.github.com"
+          if [ -f state.json ]; then
+            git add state.json
+            git diff --staged --quiet || git commit -m "Update state [skip ci]"
+            for i in 1 2 3; do
+              git pull --rebase origin main && git push origin HEAD:main && break || sleep 5
+            done
+          fi
