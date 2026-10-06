@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 import pandas as pd
 import numpy as np
@@ -8,15 +9,19 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # ==================== الإعدادات ====================
+TICKERALL_API_KEY = os.environ.get("TICKERALL_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 TELEGRAM_GROUP_CHAT_ID = os.environ.get("TELEGRAM_GROUP_CHAT_ID")
-TWELVE_DATA_API_KEY = os.environ.get("TWELVE_DATA_API_KEY")
+MT5_PASSWORD = os.environ.get("MT5_PASSWORD")
+MT5_SERVER = os.environ.get("MT5_SERVER")
+MT5_ACCOUNT = os.environ.get("MT5_ACCOUNT")
 
 STATE_FILE = "state.json"
 NY_TZ = ZoneInfo("America/New_York")
 MOSUL_TZ = ZoneInfo("Asia/Baghdad")
-SYMBOL = "XAU/USD"
+BASE_URL = "https://api.tickerall.com"
+SERVER_OFFSET_HOURS = 3
 
 # ==================== الثوابت ====================
 MULT = 10.0
@@ -30,6 +35,7 @@ MAX_BARS_TRADE = 60
 TP1_R = 1.0
 TP2_R = 2.0
 TP3_R = 3.0
+SYMBOL = "XAUUSD#"
 PIVOT_LEFT = 3
 PIVOT_RIGHT = 3
 SWEEP_LB = 20
@@ -38,7 +44,8 @@ OB_EXPIRY = 15
 MSS_EXPIRY = 15
 SWEEP_EXPIRY = 20
 BRK_EXPIRY = 20
-STALE_DATA_MINUTES = 45
+STALE_DATA_MINUTES = 240
+RECENT_BARS = 5
 
 
 def fmt_mosul(dt_utc):
@@ -56,36 +63,59 @@ def send_telegram(message):
             print("TG Error: " + str(e))
 
 
-def fetch_candles(symbol, interval, outputsize=500):
-    url = "https://api.twelvedata.com/time_series"
-    params = {
-        "symbol": symbol,
-        "interval": interval,
-        "outputsize": outputsize,
-        "apikey": TWELVE_DATA_API_KEY,
-        "format": "JSON",
-        "timezone": "UTC"
+def open_session(max_retries=3):
+    url = BASE_URL + "/v1/sessions"
+    headers = {"Authorization": "Bearer " + TICKERALL_API_KEY, "Content-Type": "application/json"}
+    payload = {
+        "broker": "mt5",
+        "server": MT5_SERVER,
+        "account": int(MT5_ACCOUNT) if MT5_ACCOUNT and MT5_ACCOUNT.isdigit() else MT5_ACCOUNT,
+        "password": MT5_PASSWORD
     }
+    for attempt in range(1, max_retries + 1):
+        try:
+            print("Session attempt " + str(attempt) + "/" + str(max_retries))
+            r = requests.post(url, headers=headers, json=payload, timeout=30)
+            if r.status_code == 200:
+                account_id = r.json().get("accountId")
+                print("Session opened: " + str(account_id))
+                return account_id
+            else:
+                print("Session failed: " + str(r.status_code) + " " + r.text[:200])
+                if attempt < max_retries:
+                    time.sleep(5)
+        except Exception as e:
+            print("Session error: " + str(e))
+            if attempt < max_retries:
+                time.sleep(5)
+    print("All session attempts failed")
+    return None
+
+
+def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500, server_offset_hours=SERVER_OFFSET_HOURS):
+    url = BASE_URL + "/v1/accounts/" + account_id + "/candles"
+    headers = {"Authorization": "Bearer " + TICKERALL_API_KEY}
+    params = {"symbol": symbol, "timeframe": timeframe, "limit": limit, "hours": hours}
     try:
-        r = requests.get(url, params=params, timeout=60)
+        r = requests.get(url, headers=headers, params=params, timeout=90)
         if r.status_code != 200:
-            print("Fail " + interval + ": " + str(r.status_code) + " " + r.text[:200])
+            print("Fail " + timeframe + ": " + str(r.status_code))
             return None
         data = r.json()
-        if "values" not in data:
-            print("Twelve Data error: " + str(data.get('message', 'unknown')))
+        candles = data.get("candles", [])
+        if not candles:
+            print("No candles for " + timeframe)
             return None
-        candles = data["values"]
         df = pd.DataFrame(candles)
-        df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
+        df["datetime"] = pd.to_datetime(df["timestamp"], unit="s", utc=True) - pd.Timedelta(hours=server_offset_hours)
         df = df[["datetime", "open", "high", "low", "close"]].copy()
         for c in ["open", "high", "low", "close"]:
             df[c] = pd.to_numeric(df[c])
         df = df.sort_values("datetime").reset_index(drop=True)
-        print("OK " + interval + ": " + str(len(df)) + " candles | last: " + str(df.iloc[-1]['close']))
+        print("OK " + timeframe + ": " + str(len(df)) + " candles | last: " + str(df.iloc[-1]['close']))
         return df
     except Exception as e:
-        print("Fetch " + interval + " Error: " + str(e))
+        print("Fetch " + timeframe + " Error: " + str(e))
         traceback.print_exc()
         return None
 
@@ -172,7 +202,8 @@ def save_state(s):
     print("State saved: active_trade=" + ("YES" if s.get('active_trade') else "NO"))
 
 
-def manage_trade(state, current_price, now_utc):
+# ==================== إدارة الصفقة (يستخدم high/low) ====================
+def manage_trade(state, df5, now_utc):
     print("[manage_trade] start")
     t = state["active_trade"]
     if t is None:
@@ -186,7 +217,14 @@ def manage_trade(state, current_price, now_utc):
     tp2 = t["tp2"]
     tp3 = t["tp3"]
     time_str = fmt_mosul(now_utc)
-    print("[manage_trade] " + str(t.get('model')) + " " + d + " @ " + str(e) + " | price: " + str(current_price))
+
+    recent_bars = df5.tail(RECENT_BARS)
+    recent_high = float(recent_bars["high"].max())
+    recent_low = float(recent_bars["low"].min())
+    current_price = float(df5.iloc[-1]["close"])
+
+    print("[manage_trade] " + str(t.get('model')) + " " + d + " @ " + str(e))
+    print("[manage_trade] recent_high=" + str(round(recent_high, 2)) + " recent_low=" + str(round(recent_low, 2)) + " current=" + str(round(current_price, 2)))
 
     entry_time_str = t.get("entry_time")
     if entry_time_str:
@@ -194,6 +232,7 @@ def manage_trade(state, current_price, now_utc):
             entry_dt = datetime.fromisoformat(entry_time_str)
             elapsed = (now_utc - entry_dt).total_seconds()
             bars_elapsed = elapsed / 300
+            print("[manage_trade] bars elapsed=" + str(round(bars_elapsed, 1)))
             if bars_elapsed >= MAX_BARS_TRADE:
                 pnl_pts = (e - current_price) if d == "SELL" else (current_price - e)
                 pnl_pts *= MULT
@@ -202,7 +241,7 @@ def manage_trade(state, current_price, now_utc):
                     "Model: " + str(t['model']) + "\n" +
                     "Direction: " + d + "\n" +
                     "Entry: " + str(e) + "\n" +
-                    "Current: " + str(current_price) + "\n" +
+                    "Current: " + str(round(current_price, 2)) + "\n" +
                     "PnL: " + str(round(pnl_pts, 2)) + " pts\n" +
                     "Time: " + time_str
                 )
@@ -211,11 +250,18 @@ def manage_trade(state, current_price, now_utc):
         except Exception as e2:
             print("[manage_trade] Time error: " + str(e2))
 
-    # ========== STOP LOSS ==========
-    if (d == "BUY" and current_price <= sl) or (d == "SELL" and current_price >= sl):
+    sl_hit = False
+    if d == "BUY":
+        if recent_low <= sl:
+            sl_hit = True
+    else:
+        if recent_high >= sl:
+            sl_hit = True
+
+    if sl_hit:
         if t["tp1_hit"]:
             send_telegram(
-                "SL hit after TP1 (Break Even)\n" +
+                "SL after TP1 (BE)\n" +
                 "Model: " + str(t['model']) + "\n" +
                 "Direction: " + d + "\n" +
                 "Entry: " + str(e) + "\n" +
@@ -234,43 +280,58 @@ def manage_trade(state, current_price, now_utc):
         state["active_trade"] = None
         return
 
-    # ========== TP1 ==========
-    if not t["tp1_hit"] and ((d == "BUY" and current_price >= tp1) or (d == "SELL" and current_price <= tp1)):
-        t["tp1_hit"] = True
-        send_telegram(
-            "TP1 hit! Book your profit\n" +
-            "Model: " + str(t['model']) + "\n" +
-            "Direction: " + d + "\n" +
-            "Entry: " + str(e) + "\n" +
-            "TP1: " + str(tp1) + " ✓\n" +
-            "Move SL to BE: " + str(e) + "\n" +
-            "Time: " + time_str
-        )
+    if not t["tp1_hit"]:
+        tp1_hit_now = False
+        if d == "BUY" and recent_high >= tp1:
+            tp1_hit_now = True
+        elif d == "SELL" and recent_low <= tp1:
+            tp1_hit_now = True
+        if tp1_hit_now:
+            t["tp1_hit"] = True
+            send_telegram(
+                "TP1 hit! Book your profit\n" +
+                "Model: " + str(t['model']) + "\n" +
+                "Direction: " + d + "\n" +
+                "Entry: " + str(e) + "\n" +
+                "TP1: " + str(tp1) + "\n" +
+                "Move SL to BE: " + str(e) + "\n" +
+                "Time: " + time_str
+            )
 
-    # ========== TP2 ==========
-    if t["tp1_hit"] and not t["tp2_hit"] and ((d == "BUY" and current_price >= tp2) or (d == "SELL" and current_price <= tp2)):
-        t["tp2_hit"] = True
-        send_telegram(
-            "TP2 hit!\n" +
-            "Model: " + str(t['model']) + "\n" +
-            "Direction: " + d + "\n" +
-            "Entry: " + str(e) + "\n" +
-            "TP2: " + str(tp2) + " ✓\n" +
-            "Time: " + time_str
-        )
+    if t["tp1_hit"] and not t["tp2_hit"]:
+        tp2_hit_now = False
+        if d == "BUY" and recent_high >= tp2:
+            tp2_hit_now = True
+        elif d == "SELL" and recent_low <= tp2:
+            tp2_hit_now = True
+        if tp2_hit_now:
+            t["tp2_hit"] = True
+            send_telegram(
+                "TP2 hit!\n" +
+                "Model: " + str(t['model']) + "\n" +
+                "Direction: " + d + "\n" +
+                "Entry: " + str(e) + "\n" +
+                "TP2: " + str(tp2) + "\n" +
+                "Time: " + time_str
+            )
 
-    # ========== TP3 ==========
-    if t["tp2_hit"] and not t["tp3_hit"] and ((d == "BUY" and current_price >= tp3) or (d == "SELL" and current_price <= tp3)):
-        t["tp3_hit"] = True
-        send_telegram(
-            "TP3 hit! Celebrate!\n" +
-            "Model: " + str(t['model']) + "\n" +
-            "Direction: " + d + "\n" +
-            "Entry: " + str(e) + "\n" +
-            "TP3: " + str(tp3) + " ✓\n" +
-            "Time: " + time_str
-        )
-        state["active_trade"] = None
+    if t["tp2_hit"] and not t["tp3_hit"]:
+        tp3_hit_now = False
+        if d == "BUY" and recent_high >= tp3:
+            tp3_hit_now = True
+        elif d == "SELL" and recent_low <= tp3:
+            tp3_hit_now = True
+        if tp3_hit_now:
+            t["tp3_hit"] = True
+            send_telegram(
+                "TP3 hit! Celebrate!\n" +
+                "Model: " + str(t['model']) + "\n" +
+                "Direction: " + d + "\n" +
+                "Entry: " + str(e) + "\n" +
+                "TP3: " + str(tp3) + "\n" +
+                "Time: " + time_str
+            )
+            state["active_trade"] = None
 
 
 def build_context(df):
@@ -846,7 +907,7 @@ def check_signal(df5, df1h, state, now_utc, now_ny):
 
 
 def main():
-    print("MSNR Bot Scan - start")
+    print("Gold Bot (MaxifyFX) - start")
     try:
         state = load_state()
         now_utc = datetime.now(ZoneInfo("UTC"))
@@ -864,29 +925,36 @@ def main():
             state["models_done_today"] = []
             state["last_day"] = today
 
+        print("Opening session...")
+        account_id = open_session()
+        if not account_id:
+            send_telegram("Failed to open TickerAll session - possible signal missed")
+            save_state(state)
+            return
+
         # ========== Active trade management FIRST ==========
         if state["active_trade"] is not None:
             print("Active trade found. Fetching M5 for management...")
-            df5 = fetch_candles(SYMBOL, "5min", 100)
+            df5 = fetch_candles(account_id, SYMBOL, "M5", 100, 42)
             if df5 is None:
                 print("Failed to fetch M5 - cannot manage trade")
                 save_state(state)
                 return
             price = float(df5.iloc[-1]["close"])
-            print("Price: " + str(price) + " | Mosul: " + fmt_mosul(now_utc))
-            manage_trade(state, price, now_utc)
+            print("Price: " + str(round(price, 2)) + " | Mosul: " + fmt_mosul(now_utc))
+            manage_trade(state, df5, now_utc)
             save_state(state)
             print("Done - trade managed")
             return
 
         # ========== Check for new signal ==========
         print("Fetch M5...")
-        df5 = fetch_candles(SYMBOL, "5min", 500)
+        df5 = fetch_candles(account_id, SYMBOL, "M5", 500, 42)
         print("Fetch H1...")
-        df1h = fetch_candles(SYMBOL, "1h", 500)
+        df1h = fetch_candles(account_id, SYMBOL, "H1", 500, 500)
 
         if df5 is None or df1h is None:
-            send_telegram("Failed to fetch data from Twelve Data")
+            send_telegram("Failed to fetch data")
             save_state(state)
             return
 
@@ -899,7 +967,7 @@ def main():
             return
 
         price = float(df5.iloc[-1]["close"])
-        print("Price: " + str(price) + " | Mosul: " + fmt_mosul(now_utc) + " | NY: " + now_ny.strftime('%H:%M'))
+        print("Price: " + str(round(price, 2)) + " | Mosul: " + fmt_mosul(now_utc) + " | NY: " + now_ny.strftime('%H:%M'))
 
         print("Checking signal...")
         sig = check_signal(df5, df1h, state, now_utc, now_ny)
@@ -936,7 +1004,7 @@ def main():
         print("Error in main: " + str(e))
         traceback.print_exc()
         try:
-            send_telegram("MSNR Bot Scan error: " + str(e))
+            send_telegram("Gold Bot error: " + str(e))
         except:
             pass
 
