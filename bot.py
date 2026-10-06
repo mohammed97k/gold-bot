@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 import pandas as pd
 import numpy as np
@@ -20,7 +21,7 @@ STATE_FILE = "state.json"
 NY_TZ = ZoneInfo("America/New_York")
 MOSUL_TZ = ZoneInfo("Asia/Baghdad")
 BASE_URL = "https://api.tickerall.com"
-SERVER_OFFSET_HOURS = 3  # MaxifyFX server is UTC+3
+SERVER_OFFSET_HOURS = 3
 
 # ==================== الثوابت ====================
 MULT = 10.0
@@ -61,7 +62,8 @@ def send_telegram(message):
             print("TG Error: " + str(e))
 
 
-def open_session():
+# ==================== فتح جلسة (مع Retry) ====================
+def open_session(max_retries=3):
     url = BASE_URL + "/v1/sessions"
     headers = {"Authorization": "Bearer " + TICKERALL_API_KEY, "Content-Type": "application/json"}
     payload = {
@@ -70,18 +72,24 @@ def open_session():
         "account": int(MT5_ACCOUNT) if MT5_ACCOUNT and MT5_ACCOUNT.isdigit() else MT5_ACCOUNT,
         "password": MT5_PASSWORD
     }
-    try:
-        r = requests.post(url, headers=headers, json=payload, timeout=30)
-        if r.status_code == 200:
-            account_id = r.json().get("accountId")
-            print("Session opened: " + str(account_id))
-            return account_id
-        else:
-            print("Failed session: " + str(r.status_code) + " " + r.text[:300])
-            return None
-    except Exception as e:
-        print("Session Error: " + str(e))
-        return None
+    for attempt in range(1, max_retries + 1):
+        try:
+            print("Session attempt " + str(attempt) + "/" + str(max_retries))
+            r = requests.post(url, headers=headers, json=payload, timeout=30)
+            if r.status_code == 200:
+                account_id = r.json().get("accountId")
+                print("Session opened: " + str(account_id))
+                return account_id
+            else:
+                print("Session failed: " + str(r.status_code) + " " + r.text[:200])
+                if attempt < max_retries:
+                    time.sleep(5)
+        except Exception as e:
+            print("Session error: " + str(e))
+            if attempt < max_retries:
+                time.sleep(5)
+    print("All session attempts failed")
+    return None
 
 
 def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500, server_offset_hours=SERVER_OFFSET_HOURS):
@@ -99,7 +107,6 @@ def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500, server_of
             print("No candles for " + timeframe)
             return None
         df = pd.DataFrame(candles)
-        # إصلاح التوقيت: نطرح offset السيرفر
         df["datetime"] = pd.to_datetime(df["timestamp"], unit="s", utc=True) - pd.Timedelta(hours=server_offset_hours)
         df = df[["datetime", "open", "high", "low", "close"]].copy()
         for c in ["open", "high", "low", "close"]:
@@ -841,7 +848,7 @@ def main():
         print("Opening session...")
         account_id = open_session()
         if not account_id:
-            send_telegram("Failed to open TickerAll session")
+            send_telegram("⚠️ Failed to open TickerAll session - possible signal missed")
             save_state(state)
             return
 
