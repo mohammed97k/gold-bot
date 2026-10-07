@@ -201,7 +201,7 @@ def save_state(s):
     print("State saved: active_trade=" + ("YES" if s.get('active_trade') else "NO"))
 
 
-# ==================== إدارة الصفقة (يفحص كل الشمعات من وقت الدخول) ====================
+# ==================== إدارة الصفقة (مع إصلاح التوقيت) ====================
 def manage_trade(state, df5, now_utc):
     print("[manage_trade] start")
     t = state["active_trade"]
@@ -222,6 +222,8 @@ def manage_trade(state, df5, now_utc):
         return
 
     entry_dt = datetime.fromisoformat(entry_time_str)
+    # ⬅️ إصلاح التوقيت: نطرح offset من entry_dt حتى يتطابق مع df5
+    entry_dt_adjusted = entry_dt - pd.Timedelta(hours=SERVER_OFFSET_HOURS)
 
     # ========== TIME EXIT FIRST ==========
     elapsed = (now_utc - entry_dt).total_seconds()
@@ -244,7 +246,7 @@ def manage_trade(state, df5, now_utc):
         return
 
     # ========== CHECK ALL BARS SINCE ENTRY ==========
-    bars_since = df5[df5["datetime"] >= entry_dt].copy()
+    bars_since = df5[df5["datetime"] >= entry_dt_adjusted].copy()
     print("[manage_trade] " + str(t.get('model')) + " " + d + " @ " + str(e))
     print("[manage_trade] bars since entry: " + str(len(bars_since)))
 
