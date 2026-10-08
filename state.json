@@ -1,10 +1,23 @@
 {
-  "active_trade": null,
-  "last_entry_time": "2026-10-08T12:45:32.930994+00:00",
-  "trade_count_today": 2,
+  "active_trade": {
+    "model": "2022-AM",
+    "direction": "SELL",
+    "entry": 4122.84,
+    "sl": 4137.81,
+    "tp1": 4107.86,
+    "tp2": 4092.88,
+    "tp3": 4077.9,
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "entry_time": "2026-10-08T15:05:35.653075+00:00"
+  },
+  "last_entry_time": "2026-10-08T15:05:35.653075+00:00",
+  "trade_count_today": 3,
   "last_day": "2026-10-08",
   "models_done_today": [
     "OB",
-    "Quarter"
+    "Quarter",
+    "2022-AM"
   ]
 }
