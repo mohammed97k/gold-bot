@@ -1,11 +1,7 @@
 {
   "active_trade": null,
   "last_entry_time": "2026-10-07T18:40:33.057946+00:00",
-  "trade_count_today": 3,
-  "last_day": "2026-10-07",
-  "models_done_today": [
-    "OB",
-    "Mitig",
-    "SB-PM"
-  ]
+  "trade_count_today": 0,
+  "last_day": "2026-10-08",
+  "models_done_today": []
 }
