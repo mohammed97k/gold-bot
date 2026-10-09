@@ -22,6 +22,7 @@ NY_TZ = ZoneInfo("America/New_York")
 MOSUL_TZ = ZoneInfo("Asia/Baghdad")
 BASE_URL = "https://api.tickerall.com"
 SERVER_OFFSET_HOURS = 3
+ALERT_COOLDOWN_MINUTES = 60  # ⬅️ Cooldown للتنبيهات (كل ساعة)
 
 # ==================== الثوابت ====================
 MULT = 10.0
@@ -60,6 +61,25 @@ def send_telegram(message):
             print("TG->" + str(chat_id) + ": ok=" + str(r.json().get('ok')))
         except Exception as e:
             print("TG Error: " + str(e))
+
+
+def send_telegram_cooldown(state, message, now_utc):
+    """يدز رسالة فقط إذا مرّ ALERT_COOLDOWN_MINUTES منذ آخر تنبيه"""
+    last_alert_str = state.get("last_session_alert")
+    should_send = True
+    if last_alert_str:
+        try:
+            last_alert = datetime.fromisoformat(last_alert_str)
+            minutes_since = (now_utc - last_alert).total_seconds() / 60
+            if minutes_since < ALERT_COOLDOWN_MINUTES:
+                should_send = False
+                print("Alert suppressed (" + str(int(minutes_since)) + " min since last)")
+        except Exception as e:
+            print("Alert cooldown error: " + str(e))
+    if should_send:
+        send_telegram(message)
+        state["last_session_alert"] = now_utc.isoformat()
+        print("Alert sent (cooldown reset)")
 
 
 def open_session(max_retries=3):
@@ -192,7 +212,7 @@ def load_state():
             print("State: active_trade=" + ("YES" if active else "NO") + " | trades_today=" + str(s.get('trade_count_today', 0)))
             return s
     print("State new")
-    return {"active_trade": None, "last_entry_time": None, "trade_count_today": 0, "last_day": None, "models_done_today": []}
+    return {"active_trade": None, "last_entry_time": None, "trade_count_today": 0, "last_day": None, "models_done_today": [], "last_session_alert": None}
 
 
 def save_state(s):
@@ -201,7 +221,6 @@ def save_state(s):
     print("State saved: active_trade=" + ("YES" if s.get('active_trade') else "NO"))
 
 
-# ==================== إدارة الصفقة (مع إصلاح التوقيت) ====================
 def manage_trade(state, df5, now_utc):
     print("[manage_trade] start")
     t = state["active_trade"]
@@ -222,10 +241,8 @@ def manage_trade(state, df5, now_utc):
         return
 
     entry_dt = datetime.fromisoformat(entry_time_str)
-    # ⬅️ إصلاح التوقيت: نطرح offset من entry_dt حتى يتطابق مع df5
     entry_dt_adjusted = entry_dt - pd.Timedelta(hours=SERVER_OFFSET_HOURS)
 
-    # ========== TIME EXIT FIRST ==========
     elapsed = (now_utc - entry_dt).total_seconds()
     bars_elapsed = elapsed / 300
     print("[manage_trade] bars elapsed=" + str(round(bars_elapsed, 1)) + "/" + str(MAX_BARS_TRADE))
@@ -245,7 +262,6 @@ def manage_trade(state, df5, now_utc):
         state["active_trade"] = None
         return
 
-    # ========== CHECK ALL BARS SINCE ENTRY ==========
     bars_since = df5[df5["datetime"] >= entry_dt_adjusted].copy()
     print("[manage_trade] " + str(t.get('model')) + " " + d + " @ " + str(e))
     print("[manage_trade] bars since entry: " + str(len(bars_since)))
@@ -254,13 +270,11 @@ def manage_trade(state, df5, now_utc):
         print("[manage_trade] no bars since entry - skip")
         return
 
-    # Iterate candle by candle (chronological order)
     for idx, row in bars_since.iterrows():
         bar_high = float(row["high"])
         bar_low = float(row["low"])
         bar_time = row["datetime"]
 
-        # ========== CHECK SL FIRST (conservative) ==========
         current_sl = t["sl"]
         sl_hit = False
         if d == "BUY":
@@ -292,7 +306,6 @@ def manage_trade(state, df5, now_utc):
             state["active_trade"] = None
             return
 
-        # ========== CHECK TP1 ==========
         if not t["tp1_hit"]:
             tp1_hit_now = False
             if d == "BUY" and bar_high >= tp1:
@@ -301,7 +314,7 @@ def manage_trade(state, df5, now_utc):
                 tp1_hit_now = True
             if tp1_hit_now:
                 t["tp1_hit"] = True
-                t["sl"] = e  # Move SL to BE
+                t["sl"] = e
                 send_telegram(
                     "TP1 hit! Book your profit\n" +
                     "Model: " + str(t['model']) + "\n" +
@@ -312,7 +325,6 @@ def manage_trade(state, df5, now_utc):
                     "Time: " + fmt_mosul(bar_time)
                 )
 
-        # ========== CHECK TP2 ==========
         if t["tp1_hit"] and not t["tp2_hit"]:
             tp2_hit_now = False
             if d == "BUY" and bar_high >= tp2:
@@ -330,7 +342,6 @@ def manage_trade(state, df5, now_utc):
                     "Time: " + fmt_mosul(bar_time)
                 )
 
-        # ========== CHECK TP3 ==========
         if t["tp2_hit"] and not t["tp3_hit"]:
             tp3_hit_now = False
             if d == "BUY" and bar_high >= tp3:
@@ -350,7 +361,6 @@ def manage_trade(state, df5, now_utc):
                 state["active_trade"] = None
                 return
 
-    # After checking all bars
     current_price = float(df5.iloc[-1]["close"])
     print("[manage_trade] done | current=" + str(round(current_price, 2)) + " | tp1=" + str(t.get('tp1_hit')) + " | tp2=" + str(t.get('tp2_hit')) + " | tp3=" + str(t.get('tp3_hit')))
 
@@ -949,11 +959,10 @@ def main():
         print("Opening session...")
         account_id = open_session()
         if not account_id:
-            send_telegram("Failed to open TickerAll session - possible signal missed")
+            send_telegram_cooldown(state, "⚠️ TickerAll session failed (will retry)", now_utc)
             save_state(state)
             return
 
-        # ========== Active trade management FIRST ==========
         if state["active_trade"] is not None:
             print("Active trade found. Fetching M5 for management...")
             df5 = fetch_candles(account_id, SYMBOL, "M5", 500, 42)
@@ -968,14 +977,13 @@ def main():
             print("Done - trade managed")
             return
 
-        # ========== Check for new signal ==========
         print("Fetch M5...")
         df5 = fetch_candles(account_id, SYMBOL, "M5", 500, 42)
         print("Fetch H1...")
         df1h = fetch_candles(account_id, SYMBOL, "H1", 500, 500)
 
         if df5 is None or df1h is None:
-            send_telegram("Failed to fetch data")
+            send_telegram_cooldown(state, "⚠️ Failed to fetch data", now_utc)
             save_state(state)
             return
 
