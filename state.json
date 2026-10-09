@@ -1,17 +1,5 @@
 {
-  "active_trade": {
-    "model": "OB",
-    "direction": "BUY",
-    "entry": 4196.32,
-    "sl": 4190.68,
-    "tp1": 4201.96,
-    "tp2": 4207.59,
-    "tp3": 4213.23,
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "entry_time": "2026-10-09T06:00:47.637916+00:00"
-  },
+  "active_trade": null,
   "last_entry_time": "2026-10-09T06:00:47.637916+00:00",
   "trade_count_today": 1,
   "last_day": "2026-10-09",
