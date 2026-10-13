@@ -3,11 +3,11 @@
     "model": "OB",
     "direction": "BUY",
     "entry": 4187.82,
-    "sl": 4182.44,
+    "sl": 4187.82,
     "tp1": 4193.2,
     "tp2": 4198.59,
     "tp3": 4203.97,
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "entry_time": "2026-10-13T07:45:25.667623+00:00"
