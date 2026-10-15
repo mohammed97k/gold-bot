@@ -1,17 +1,5 @@
 {
-  "active_trade": {
-    "model": "SB-AM",
-    "direction": "SELL",
-    "entry": 4151.3,
-    "sl": 4161.28,
-    "tp1": 4141.31,
-    "tp2": 4131.33,
-    "tp3": 4121.34,
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "entry_time": "2026-10-15T14:10:30.990221+00:00"
-  },
+  "active_trade": null,
   "last_entry_time": "2026-10-15T14:10:30.990221+00:00",
   "trade_count_today": 2,
   "last_day": "2026-10-15",
