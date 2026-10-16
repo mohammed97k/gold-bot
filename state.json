@@ -3,11 +3,11 @@
     "model": "SB-LDN",
     "direction": "BUY",
     "entry": 4174.9,
-    "sl": 4167.79,
+    "sl": 4174.9,
     "tp1": 4182.01,
     "tp2": 4189.11,
     "tp3": 4196.22,
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "entry_time": "2026-10-16T07:00:48.060399+00:00"
