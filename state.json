@@ -1,17 +1,5 @@
 {
-  "active_trade": {
-    "model": "MOC",
-    "direction": "BUY",
-    "entry": 4167.3,
-    "sl": 4154.73,
-    "tp1": 4179.87,
-    "tp2": 4192.44,
-    "tp3": 4205.01,
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "entry_time": "2026-10-16T19:30:37.892538+00:00"
-  },
+  "active_trade": null,
   "last_entry_time": "2026-10-16T19:30:37.892538+00:00",
   "trade_count_today": 3,
   "last_day": "2026-10-16",
