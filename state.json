@@ -3,11 +3,11 @@
     "model": "MOC",
     "direction": "SELL",
     "entry": 4144.93,
-    "sl": 4149.98,
+    "sl": 4144.93,
     "tp1": 4139.89,
     "tp2": 4134.85,
     "tp3": 4129.81,
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "entry_time": "2026-10-19T19:30:44.370339+00:00"
