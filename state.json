@@ -1,12 +1,8 @@
 {
   "active_trade": null,
   "last_entry_time": "2026-10-16T19:30:37.892538+00:00",
-  "trade_count_today": 3,
-  "last_day": "2026-10-16",
-  "models_done_today": [
-    "SB-LDN",
-    "OB",
-    "MOC"
-  ],
+  "trade_count_today": 0,
+  "last_day": "2026-10-19",
+  "models_done_today": [],
   "last_session_alert": "2026-10-16T21:45:28.898943+00:00"
 }
