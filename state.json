@@ -1,10 +1,23 @@
 {
-  "active_trade": null,
-  "last_entry_time": "2026-10-19T06:20:27.634322+00:00",
-  "trade_count_today": 1,
+  "active_trade": {
+    "model": "SB-LDN",
+    "direction": "BUY",
+    "entry": 4182.58,
+    "sl": 4169.86,
+    "tp1": 4195.3,
+    "tp2": 4208.03,
+    "tp3": 4220.75,
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "entry_time": "2026-10-19T07:00:43.259396+00:00"
+  },
+  "last_entry_time": "2026-10-19T07:00:43.259396+00:00",
+  "trade_count_today": 2,
   "last_day": "2026-10-19",
   "models_done_today": [
-    "OB"
+    "OB",
+    "SB-LDN"
   ],
   "last_session_alert": "2026-10-16T21:45:28.898943+00:00"
 }
