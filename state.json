@@ -1,17 +1,5 @@
 {
-  "active_trade": {
-    "model": "2022-AM",
-    "direction": "SELL",
-    "entry": 4136.66,
-    "sl": 4136.66,
-    "tp1": 4131.04,
-    "tp2": 4125.43,
-    "tp3": 4119.81,
-    "tp1_hit": true,
-    "tp2_hit": true,
-    "tp3_hit": false,
-    "entry_time": "2026-10-20T15:20:35.935978+00:00"
-  },
+  "active_trade": null,
   "last_entry_time": "2026-10-20T15:20:35.935978+00:00",
   "trade_count_today": 3,
   "last_day": "2026-10-20",
