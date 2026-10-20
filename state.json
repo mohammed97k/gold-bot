@@ -3,11 +3,11 @@
     "model": "2022-AM",
     "direction": "SELL",
     "entry": 4136.66,
-    "sl": 4142.27,
+    "sl": 4136.66,
     "tp1": 4131.04,
     "tp2": 4125.43,
     "tp3": 4119.81,
-    "tp1_hit": false,
+    "tp1_hit": true,
     "tp2_hit": false,
     "tp3_hit": false,
     "entry_time": "2026-10-20T15:20:35.935978+00:00"
