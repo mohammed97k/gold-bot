@@ -1,17 +1,5 @@
 {
-  "active_trade": {
-    "model": "Mitig",
-    "direction": "SELL",
-    "entry": 4118.38,
-    "sl": 4128.57,
-    "tp1": 4108.2,
-    "tp2": 4098.01,
-    "tp3": 4087.83,
-    "tp1_hit": false,
-    "tp2_hit": false,
-    "tp3_hit": false,
-    "entry_time": "2026-10-20T12:30:41.427869+00:00"
-  },
+  "active_trade": null,
   "last_entry_time": "2026-10-20T12:30:41.427869+00:00",
   "trade_count_today": 1,
   "last_day": "2026-10-20",
