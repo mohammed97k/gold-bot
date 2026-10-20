@@ -1,8 +1,22 @@
 {
-  "active_trade": null,
-  "last_entry_time": "2026-10-19T19:30:44.370339+00:00",
-  "trade_count_today": 0,
+  "active_trade": {
+    "model": "Mitig",
+    "direction": "SELL",
+    "entry": 4118.38,
+    "sl": 4128.57,
+    "tp1": 4108.2,
+    "tp2": 4098.01,
+    "tp3": 4087.83,
+    "tp1_hit": false,
+    "tp2_hit": false,
+    "tp3_hit": false,
+    "entry_time": "2026-10-20T12:30:41.427869+00:00"
+  },
+  "last_entry_time": "2026-10-20T12:30:41.427869+00:00",
+  "trade_count_today": 1,
   "last_day": "2026-10-20",
-  "models_done_today": [],
+  "models_done_today": [
+    "Mitig"
+  ],
   "last_session_alert": "2026-10-20T05:00:38.616732+00:00"
 }
