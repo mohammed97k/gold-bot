@@ -1,12 +1,8 @@
 {
   "active_trade": null,
   "last_entry_time": "2026-10-21T12:45:32.840816+00:00",
-  "trade_count_today": 3,
-  "last_day": "2026-10-21",
-  "models_done_today": [
-    "BPR",
-    "SB-LDN",
-    "Mitig"
-  ],
+  "trade_count_today": 0,
+  "last_day": "2026-10-22",
+  "models_done_today": [],
   "last_session_alert": "2026-10-20T05:00:38.616732+00:00"
 }
