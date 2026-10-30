@@ -7,20 +7,5 @@
   "last_session_alert": "2026-10-23T05:05:27.270168+00:00",
   "active_trades": [],
   "last_entry_times": {},
-  "pending_orders": [
-    {
-      "model": "FVG-Direct",
-      "direction": "SELL",
-      "entry": 3929.12,
-      "sl": 3941.69,
-      "tp1": 3919.12,
-      "tp2": 3914.12,
-      "tp3": 3909.12,
-      "risk_pts": 125.72191066421055,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-10-30T15:50:31.284009+00:00"
-    }
-  ]
+  "pending_orders": []
 }
