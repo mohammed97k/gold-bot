@@ -4,5 +4,7 @@
   "trade_count_today": 0,
   "last_day": "2026-10-30",
   "models_done_today": [],
-  "last_session_alert": "2026-10-23T05:05:27.270168+00:00"
+  "last_session_alert": "2026-10-23T05:05:27.270168+00:00",
+  "active_trades": [],
+  "last_entry_times": {}
 }
