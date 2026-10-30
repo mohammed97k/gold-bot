@@ -11,30 +11,16 @@
     {
       "model": "FVG-Direct",
       "direction": "SELL",
-      "entry": 3950.06,
-      "sl": 3957.61,
-      "tp1": 3940.06,
-      "tp2": 3935.06,
-      "tp3": 3930.06,
-      "risk_pts": 75.50554587691295,
+      "entry": 3929.12,
+      "sl": 3941.69,
+      "tp1": 3919.12,
+      "tp2": 3914.12,
+      "tp3": 3909.12,
+      "risk_pts": 125.6881711169035,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-10-30T13:35:30.078959+00:00"
-    },
-    {
-      "model": "Mitigation",
-      "direction": "SELL",
-      "entry": 3990.24,
-      "sl": 3997.01,
-      "tp1": 3980.24,
-      "tp2": 3975.24,
-      "tp3": 3970.24,
-      "risk_pts": 67.6555458769144,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-10-30T13:35:30.078959+00:00"
+      "created_at": "2026-10-30T14:40:35.251144+00:00"
     }
   ]
 }
