@@ -2,15 +2,16 @@ name: Gold Trading Signals Bot
 
 on:
   schedule:
-    - cron: '*/1 * * * 1-5'  # يشتغل كل دقيقة (لضمان الدخول اللحظي)
-  workflow_dispatch:
+    # يشتغل كل 5 دقائق من الاثنين للجمعة
+    - cron: '*/5 * * * 1-5'
+  workflow_dispatch: # يسمح لك بتشغيله يدوياً للتجربة
 
 concurrency:
   group: gold-bot
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: write # صلاحية حفظ وتحديث ملف state.json في الريبو
 
 jobs:
   run-strategy:
@@ -28,6 +29,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install pandas numpy requests pytz
 
       - name: Run Strategy Bot
@@ -43,10 +45,11 @@ jobs:
 
       - name: Commit state file
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add state.json || true
-          git diff --staged --quiet || git commit -m "Update state [skip ci]"
+          git diff --staged --quiet || git commit -m "Auto-update state [skip ci]"
+          # نحاول نرفع التحديث 3 مرات في حال صار تعارض (Conflict)
           for i in 1 2 3; do
             git pull --rebase origin main && git push origin HEAD:main && break || sleep 5
           done
