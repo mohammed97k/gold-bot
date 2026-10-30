@@ -35,6 +35,7 @@ TP2_PTS = 150.0
 TP3_PTS = 200.0
 SYMBOL = "XAUUSD#"
 EXPIRY_MINUTES = 60  # إلغاء الأمر المعلق بعد ساعة
+MAX_DISTANCE_FOR_LIMIT_PTS = 40.0  # أقصى مسافة بالأعوام للسماح بالأمر المعلق
 
 # 🔴 ضع هنا IDs الستيكرات (إذا لم تتوفر اتركها فارغة)
 STICKER_NEW_TRADE = "" 
@@ -42,7 +43,6 @@ STICKER_TP = ""
 STICKER_SL = ""
 
 def fmt_mosul_12h(dt_utc):
-    """توقيت الموصل بنظام 12 ساعة"""
     return dt_utc.astimezone(MOSUL_TZ).strftime('%I:%M %p')
 
 # ==================== رسائل التليجرام ====================
@@ -65,13 +65,14 @@ def send_sticker(sticker_id):
         except Exception as e:
             print(f"Sticker Error: {e}", flush=True)
 
-def send_pending_msg(trade):
+def send_pending_msg(trade, current_price):
     direction_icon = "🟢 <b>BUY LIMIT</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL LIMIT</b>"
     msg = (
         f"⏳ <b>أمر معلق (Limit Order)!</b> ⏳\n\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
         f"💰 <b>سعر الدخول (Limit):</b> <code>{trade['entry']}</code>\n"
+        f"📉 <b>السعر الحالي:</b> <code>{current_price}</code>\n"
         f"🚫 <b>الستوب:</b> <code>{trade['sl']}</code> (مخاطرة {trade['risk_pts']:.1f} نقطة)\n\n"
         f"🎯 <b>الهدف الأول:</b> <code>{trade['tp1']}</code>\n"
         f"🎯🎯 <b>الهدف الثاني:</b> <code>{trade['tp2']}</code>\n"
@@ -159,17 +160,11 @@ def open_session(max_retries=3):
     }
     for attempt in range(1, max_retries + 1):
         try:
-            print(f"Session attempt {attempt}/{max_retries}...", flush=True)
             r = requests.post(url, headers=headers, json=payload, timeout=30)
-            if r.status_code == 200:
-                account_id = r.json().get("accountId")
-                print(f"Session opened: {account_id}", flush=True)
-                return account_id
+            if r.status_code == 200: return r.json().get("accountId")
             else:
-                print(f"Session failed: {r.status_code} {r.text[:200]}", flush=True)
                 if attempt < max_retries: time.sleep(5)
         except Exception as e:
-            print(f"Session error: {e}", flush=True)
             if attempt < max_retries: time.sleep(5)
     return None
 
@@ -178,28 +173,18 @@ def fetch_candles(account_id, timeframe, limit=500, hours=500):
     headers = {"Authorization": "Bearer " + TICKERALL_API_KEY}
     params = {"symbol": SYMBOL, "timeframe": timeframe, "limit": limit, "hours": hours}
     try:
-        print(f"Fetching {timeframe}...", flush=True)
         r = requests.get(url, headers=headers, params=params, timeout=90)
-        print(f"{timeframe} HTTP Status: {r.status_code}", flush=True)
-        if r.status_code != 200:
-            print(f"Fail {timeframe}: {r.status_code} {r.text[:100]}", flush=True)
-            return None
+        if r.status_code != 200: return None
         data = r.json()
         candles = data.get("candles", [])
-        if not candles:
-            print(f"No candles for {timeframe}", flush=True)
-            return None
+        if not candles: return None
         df = pd.DataFrame(candles)
         df["datetime"] = pd.to_datetime(df["timestamp"], unit="s", utc=True) - pd.Timedelta(hours=SERVER_OFFSET_HOURS)
         df = df[["datetime", "open", "high", "low", "close"]].copy()
         for c in ["open", "high", "low", "close"]:
             df[c] = pd.to_numeric(df[c])
-        df = df.sort_values("datetime").reset_index(drop=True)
-        print(f"OK {timeframe}: {len(df)} candles | last: {df.iloc[-1]['close']}", flush=True)
-        return df
+        return df.sort_values("datetime").reset_index(drop=True)
     except Exception as e:
-        print(f"Fetch {timeframe} Error: {e}", flush=True)
-        traceback.print_exc()
         return None
 
 # ==================== دوال الحسابات الفنية ====================
@@ -236,7 +221,7 @@ def session_flags(dt):
         "NFP": tm(8, 30, 9, 0), "TGIF": dt.weekday() == 4 and tm(14, 0, 15, 0)
     }
 
-# ==================== المنطق الأساسي للاستراتيجية ====================
+# ==================== المنطق الأساسي ====================
 def check_all_models(df_m30, df_h1, now_utc, now_ny):
     n = len(df_m30)
     if n < 50: return []
@@ -283,7 +268,6 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
     csM_ = False; csMBar_ = -1; csMH = np.nan; csML = np.nan
 
     for i in range(2, n):
-        # Sweeps
         if bull_sweep[i]: cbS = True; cbSBar = i; cbSL = l[i]
         if bear_sweep[i]: csS = True; csSBar = i; csSH = h[i]
         if cbS and (i - cbSBar) > 20: cbS = False
@@ -291,14 +275,12 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
         bSweepOK[i] = cbS; bSweepLow[i] = cbSL
         sSweepOK[i] = csS; sSweepHigh[i] = csSH
         
-        # MSS
         if not np.isnan(last_sh[i]) and c[i] > last_sh[i] and c[i-1] <= last_sh[i] and bSweepOK[i]: cbM = True; cbMBar = i
         if not np.isnan(last_sl[i]) and c[i] < last_sl[i] and c[i-1] >= last_sl[i] and sSweepOK[i]: csM = True; csMBar = i
         if cbM and (i - cbMBar) > 15: cbM = False
         if csM and (i - csMBar) > 15: csM = False
         bull_mss[i] = cbM; bear_mss[i] = csM
         
-        # FVG
         if l[i] > h[i-2]: cbF = True; cbFBar = i; cbT = l[i]; cbB = h[i-2]
         if h[i] < l[i-2]: csF = True; csFBar = i; csT = l[i-2]; csB = h[i]
         if cbF and (i - cbFBar) > 15: cbF = False
@@ -306,7 +288,6 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
         bFVG[i] = cbF; bTop[i] = cbT; bBot[i] = cbB
         sFVG[i] = csF; sTop[i] = csT; sBot[i] = csB
         
-        # OB
         if c[i] > o[i] and c[i-1] < o[i-1]: cbO = True; cbOBar = i-1; cbOH = h[i-1]; cbOL = l[i-1]; cbOMT = (o[i-1]+c[i-1])/2.0
         if c[i] < o[i] and c[i-1] > o[i-1]: csO = True; csOBar = i-1; csOH = h[i-1]; csOL = l[i-1]; csOMT = (o[i-1]+c[i-1])/2.0
         if cbO and (i - cbOBar) > 15: cbO = False
@@ -314,7 +295,6 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
         bOB[i] = cbO; bOBH[i] = cbOH; bOBL[i] = cbOL; bOBMT[i] = cbOMT
         sOB[i] = csO; sOBH[i] = csOH; sOBL[i] = csOL; sOBMT[i] = csOMT
 
-        # Mitigation
         if c[i] > o[i] and c[i-1] < o[i-1] and c[i] > h[i-2]: cbM_ = True; cbMBar_ = i-1; cbMH = h[i-1]; cbML = l[i-1]
         if c[i] < o[i] and c[i-1] > o[i-1] and c[i] < l[i-2]: csM_ = True; csMBar_ = i-1; csMH = h[i-1]; csML = l[i-1]
         if cbM_ and (i - cbMBar_) > 15: cbM_ = False
@@ -322,7 +302,6 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
         bMit[i] = cbM_; bMitH[i] = cbMH; bMitL[i] = cbML; bMitCE[i] = (cbMH + cbML)/2
         sMit[i] = csM_; sMitH[i] = csMH; sMitL[i] = csML; sMitCE[i] = (csMH + csML)/2
 
-    # HTF Trend
     df_h1["ema200"] = ta_ema(df_h1["close"], 200)
     df_h1["ema50"] = ta_ema(df_h1["close"], 50)
     h1 = df_h1.iloc[-2]
@@ -409,7 +388,6 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
     if sessions["TGIF"] and trendUp and bear_sweep[i] and c[i] < o[i]:
         signals.append({"model": "TGIF", "dir": "SELL", "entry": c[i], "sl": recent_high[i]+a14*0.3})
 
-    # فلترة الإشارات وحساب الأهداف
     valid_signals = []
     for sig in signals:
         risk = abs(sig["entry"] - sig["sl"]) * MULT
@@ -427,66 +405,46 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
             
     return valid_signals
 
-# ==================== إدارة الصفقات المفتوحة ====================
+# ==================== إدارة الصفقات ====================
 def manage_active_trades(state, current_price, now_utc):
     if "active_trades" not in state: state["active_trades"] = []
-    
     for trade in state["active_trades"][:]:
-        d = trade["direction"]
-        e = trade["entry"]
+        d = trade["direction"]; e = trade["entry"]
         tp1 = trade["tp1"]; tp2 = trade["tp2"]; tp3 = trade["tp3"]
         
         entry_time = datetime.fromisoformat(trade["entry_time"])
         bars_elapsed = (now_utc - entry_time).total_seconds() / 1800 
         
         if bars_elapsed >= MAX_BARS_TRADE:
-            print(f"Time Exit for {trade['model']}", flush=True)
             send_update_msg(trade, "TIME", current_price)
             state["active_trades"].remove(trade)
             continue
 
         if d == "BUY":
             if not trade["tp1_hit"] and current_price >= tp1:
-                trade["tp1_hit"] = True; trade["sl"] = e
-                print(f"TP1 Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, "TP1")
+                trade["tp1_hit"] = True; trade["sl"] = e; send_update_msg(trade, "TP1")
             if trade["tp1_hit"] and not trade["tp2_hit"] and current_price >= tp2:
-                trade["tp2_hit"] = True
-                print(f"TP2 Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, "TP2")
+                trade["tp2_hit"] = True; send_update_msg(trade, "TP2")
             if trade["tp2_hit"] and not trade["tp3_hit"] and current_price >= tp3:
-                print(f"TP3 Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, "TP3")
-                state["active_trades"].remove(trade); continue
+                send_update_msg(trade, "TP3"); state["active_trades"].remove(trade); continue
             if current_price <= trade["sl"]:
                 event = "BE" if trade["tp1_hit"] else "SL"
-                print(f"{event} Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, event)
-                state["active_trades"].remove(trade); continue
+                send_update_msg(trade, event); state["active_trades"].remove(trade); continue
                 
         elif d == "SELL":
             if not trade["tp1_hit"] and current_price <= tp1:
-                trade["tp1_hit"] = True; trade["sl"] = e
-                print(f"TP1 Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, "TP1")
+                trade["tp1_hit"] = True; trade["sl"] = e; send_update_msg(trade, "TP1")
             if trade["tp1_hit"] and not trade["tp2_hit"] and current_price <= tp2:
-                trade["tp2_hit"] = True
-                print(f"TP2 Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, "TP2")
+                trade["tp2_hit"] = True; send_update_msg(trade, "TP2")
             if trade["tp2_hit"] and not trade["tp3_hit"] and current_price <= tp3:
-                print(f"TP3 Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, "TP3")
-                state["active_trades"].remove(trade); continue
+                send_update_msg(trade, "TP3"); state["active_trades"].remove(trade); continue
             if current_price >= trade["sl"]:
                 event = "BE" if trade["tp1_hit"] else "SL"
-                print(f"{event} Hit for {trade['model']}", flush=True)
-                send_update_msg(trade, event)
-                state["active_trades"].remove(trade); continue
+                send_update_msg(trade, event); state["active_trades"].remove(trade); continue
 
 # ==================== المحرك الرئيسي ====================
 def main():
-    print("Starting ICT Gold v28 Elite Bot (Limit Orders Mode)...", flush=True)
-    
+    print("Starting ICT Gold v28 Elite Bot (Proximity Filter)...", flush=True)
     state = {"active_trades": [], "pending_orders": [], "last_day": "", "last_entry_times": {}}
     if os.path.exists(STATE_FILE):
         try:
@@ -496,8 +454,7 @@ def main():
                 if "pending_orders" not in loaded: loaded["pending_orders"] = []
                 if "last_entry_times" not in loaded: loaded["last_entry_times"] = {}
                 state = loaded
-        except Exception as e:
-            print(f"State load error: {e}", flush=True)
+        except Exception: pass
 
     now_utc = datetime.now(ZoneInfo("UTC"))
     now_ny = now_utc.astimezone(NY_TZ)
@@ -508,23 +465,16 @@ def main():
         state["last_entry_times"] = {}
         
     if now_ny.weekday() >= 5:
-        print("Weekend - bot sleeping", flush=True)
+        print("Weekend - sleeping", flush=True)
         with open(STATE_FILE, 'w') as f: json.dump(state, f, indent=2)
         return
 
-    print("Opening session...", flush=True)
     account_id = open_session()
-    if not account_id:
-        print("Failed to open session. Exiting.", flush=True)
-        return
+    if not account_id: return
 
-    print("Fetching M30 data...", flush=True)
     df_m30 = fetch_candles(account_id, "M30", 500, 500)
-    if df_m30 is None: return
-        
-    print("Fetching H1 data...", flush=True)
     df_h1 = fetch_candles(account_id, "H1", 500, 500)
-    if df_h1 is None: return
+    if df_m30 is None or df_h1 is None: return
 
     current_price = float(df_m30.iloc[-1]["close"])
     print(f"Current Price: {current_price} | Time: {fmt_mosul_12h(now_utc)}", flush=True)
@@ -537,19 +487,15 @@ def main():
         created_at = datetime.fromisoformat(order["created_at"])
         time_elapsed = (now_utc - created_at).total_seconds()
         
-        # فحص الانتهاء (ساعة)
         if time_elapsed > (EXPIRY_MINUTES * 60):
             print(f"Cancelled (Expired): {order['model']}", flush=True)
             state["pending_orders"].remove(order)
             send_cancelled_msg(order)
             continue
             
-        # فحص التفعيل
         is_filled = False
-        if order["direction"] == "BUY" and current_price <= order["entry"]:
-            is_filled = True
-        elif order["direction"] == "SELL" and current_price >= order["entry"]:
-            is_filled = True
+        if order["direction"] == "BUY" and current_price <= order["entry"]: is_filled = True
+        elif order["direction"] == "SELL" and current_price >= order["entry"]: is_filled = True
             
         if is_filled:
             print(f"Filled: {order['model']}", flush=True)
@@ -560,7 +506,6 @@ def main():
             send_filled_msg(order)
 
     # 3. فحص إشارات جديدة
-    print("Checking signals...", flush=True)
     signals = check_all_models(df_m30, df_h1, now_utc, now_ny)
     print(f"Signals found: {len(signals)}", flush=True)
     
@@ -571,12 +516,19 @@ def main():
         last_entry = state.get("last_entry_times", {}).get(model_name)
         if last_entry:
             last_dt = datetime.fromisoformat(last_entry)
-            if (now_utc - last_dt).total_seconds() / 1800 < COOLDOWN_BARS:
-                continue
+            if (now_utc - last_dt).total_seconds() / 1800 < COOLDOWN_BARS: continue
 
         # فحص التكرار
         if any(t["model"] == model_name for t in state["active_trades"]): continue
         if any(t["model"] == model_name for t in state["pending_orders"]): continue
+
+        # 🛑 فلتر المسافة (Proximity Filter) 🛑
+        # حساب المسافة بين السعر الحالي وسعر الدخول بالنقاط
+        dist_pts = abs(sig["entry"] - current_price) * MULT
+        
+        if dist_pts > MAX_DISTANCE_FOR_LIMIT_PTS:
+            print(f"⏭️ Ignored {model_name}: Entry is too far ({dist_pts:.1f} pts)", flush=True)
+            continue
 
         trade_record = {
             "model": model_name, "direction": sig["dir"],
@@ -586,24 +538,30 @@ def main():
             "tp1_hit": False, "tp2_hit": False, "tp3_hit": False
         }
 
-        if model_name in ["Judas", "TGIF"]:
+        # فحص إذا كان السعر لامس الدخول (Market Order) أو قريب (Limit Order)
+        is_market = False
+        if sig["dir"] == "BUY" and current_price <= sig["entry"]:
+            is_market = True
+        elif sig["dir"] == "SELL" and current_price >= sig["entry"]:
+            is_market = True
+
+        if model_name in ["Judas", "TGIF"] or is_market:
             trade_record["entry_time"] = now_utc.isoformat()
             state["active_trades"].append(trade_record)
             state["last_entry_times"][model_name] = now_utc.isoformat()
             send_new_trade_msg(trade_record)
-            print(f"✅ New Market Trade: {model_name}", flush=True)
+            print(f"✅ Market Trade: {model_name}", flush=True)
         else:
             trade_record["created_at"] = now_utc.isoformat()
             state["pending_orders"].append(trade_record)
-            send_pending_msg(trade_record)
-            print(f"⏳ New Pending Order: {model_name}", flush=True)
+            send_pending_msg(trade_record, current_price)
+            print(f"⏳ Pending Order (Close by {dist_pts:.1f} pts): {model_name}", flush=True)
 
     with open(STATE_FILE, 'w') as f:
         json.dump(state, f, indent=2)
 
 if __name__ == "__main__":
-    try:
-        main()
+    try: main()
     except Exception as e:
         print(f"FATAL ERROR: {e}", flush=True)
         traceback.print_exc()
