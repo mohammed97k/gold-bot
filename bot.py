@@ -34,6 +34,7 @@ TP1_PTS = 100.0
 TP2_PTS = 150.0
 TP3_PTS = 200.0
 SYMBOL = "XAUUSD#"
+EXPIRY_MINUTES = 60  # إلغاء الأمر المعلق بعد ساعة
 
 # 🔴 ضع هنا IDs الستيكرات (إذا لم تتوفر اتركها فارغة)
 STICKER_NEW_TRADE = "" 
@@ -52,7 +53,7 @@ def send_telegram_raw(message):
         try:
             requests.post(url, json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"}, timeout=15)
         except Exception as e:
-            print(f"TG Error: {e}")
+            print(f"TG Error: {e}", flush=True)
 
 def send_sticker(sticker_id):
     if not sticker_id: return
@@ -62,12 +63,54 @@ def send_sticker(sticker_id):
         try:
             requests.post(url, json={"chat_id": chat_id, "sticker": sticker_id}, timeout=15)
         except Exception as e:
-            print(f"Sticker Error: {e}")
+            print(f"Sticker Error: {e}", flush=True)
+
+def send_pending_msg(trade):
+    direction_icon = "🟢 <b>BUY LIMIT</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL LIMIT</b>"
+    msg = (
+        f"⏳ <b>أمر معلق (Limit Order)!</b> ⏳\n\n"
+        f"📊 <b>النموذج:</b> {trade['model']}\n"
+        f"📈 <b>الاتجاه:</b> {direction_icon}\n"
+        f"💰 <b>سعر الدخول (Limit):</b> <code>{trade['entry']}</code>\n"
+        f"🚫 <b>الستوب:</b> <code>{trade['sl']}</code> (مخاطرة {trade['risk_pts']:.1f} نقطة)\n\n"
+        f"🎯 <b>الهدف الأول:</b> <code>{trade['tp1']}</code>\n"
+        f"🎯🎯 <b>الهدف الثاني:</b> <code>{trade['tp2']}</code>\n"
+        f"🎯🎯🎯 <b>الهدف الثالث:</b> <code>{trade['tp3']}</code>\n\n"
+        f"⏰ <b>الوقت:</b> {fmt_mosul_12h(datetime.now(ZoneInfo('UTC')))}\n"
+        f"⚠️ <i>سيتم إلغاء الأمر إذا لم يتفعل خلال ساعة واحدة.</i>"
+    )
+    send_telegram_raw(msg)
+    send_sticker(STICKER_NEW_TRADE)
+
+def send_filled_msg(trade):
+    direction_icon = "🟢 <b>BUY</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL</b>"
+    msg = (
+        f"✅ <b>تم تفعيل الصفقة!</b> ✅\n\n"
+        f"📊 <b>النموذج:</b> {trade['model']}\n"
+        f"📈 <b>الاتجاه:</b> {direction_icon}\n"
+        f"💰 <b>الدخول:</b> <code>{trade['entry']}</code>\n"
+        f"🚫 <b>الستوب:</b> <code>{trade['sl']}</code>\n\n"
+        f"🎯 <b>الهدف الأول:</b> <code>{trade['tp1']}</code>\n"
+        f"🎯🎯 <b>الهدف الثاني:</b> <code>{trade['tp2']}</code>\n"
+        f"🎯🎯🎯 <b>الهدف الثالث:</b> <code>{trade['tp3']}</code>\n\n"
+        f"⏰ <b>وقت التفعيل:</b> {fmt_mosul_12h(datetime.now(ZoneInfo('UTC')))}\n"
+    )
+    send_telegram_raw(msg)
+    send_sticker(STICKER_NEW_TRADE)
+
+def send_cancelled_msg(trade):
+    msg = (
+        f"❌ <b>تم إلغاء الأمر المعلق (Expired)</b> ❌\n\n"
+        f"📊 <b>النموذج:</b> {trade['model']}\n"
+        f"💰 <b>سعر الدخول:</b> <code>{trade['entry']}</code>\n"
+        f"⏰ <b>السبب:</b> لم يتم الوصول للسعر خلال ساعة.\n"
+    )
+    send_telegram_raw(msg)
 
 def send_new_trade_msg(trade):
     direction_icon = "🟢 <b>BUY</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL</b>"
     msg = (
-        f"🚀 <b>صفقة جديدة!</b> 🚀\n\n"
+        f"🚀 <b>صفقة جديدة (Market)!</b> 🚀\n\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
         f"💰 <b>الدخول:</b> <code>{trade['entry']}</code>\n"
@@ -298,59 +341,60 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
     i = n - 1
     a14 = atr[i]
     swingEq = (last_sh[i] + last_sl[i]) / 2.0 if not (np.isnan(last_sh[i]) or np.isnan(last_sl[i])) else np.nan
-    
+    current_price = c[i]
+
     signals = []
     
     # 1. IOFED
-    if sessKZ and (bull_mss[i] or bSweepOK[i]) and bOB[i] and l[i] <= bOBMT[i] and l[i] >= bOBL[i] and c[i] > o[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and trendUp and (c[i]-o[i]) > a14*0.4:
+    if sessKZ and (bull_mss[i] or bSweepOK[i]) and bOB[i] and c[i] > o[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and trendUp and (c[i]-o[i]) > a14*0.4 and c[i] >= bOBMT[i]:
         signals.append({"model": "IOFED", "dir": "BUY", "entry": bOBMT[i], "sl": bOBL[i]-a14*0.3})
-    if sessKZ and (bear_mss[i] or sSweepOK[i]) and sOB[i] and h[i] >= sOBMT[i] and h[i] <= sOBH[i] and c[i] < o[i] and not np.isnan(swingEq) and sOBMT[i] > swingEq and trendDown and (o[i]-c[i]) > a14*0.4:
+    if sessKZ and (bear_mss[i] or sSweepOK[i]) and sOB[i] and c[i] < o[i] and not np.isnan(swingEq) and sOBMT[i] > swingEq and trendDown and (o[i]-c[i]) > a14*0.4 and c[i] <= sOBMT[i]:
         signals.append({"model": "IOFED", "dir": "SELL", "entry": sOBMT[i], "sl": sOBH[i]+a14*0.3})
 
     # 2. FVG-Direct
     bFage = i - np.where(bFVG)[0][-1] if bFVG.any() else 999
     sFage = i - np.where(sFVG)[0][-1] if sFVG.any() else 999
-    if sessKZ and strongBull and bFVG[i] and bFage <= 5 and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2 and c[i] > bBot[i] and abs(c[i]-o[i]) > a14*0.3:
+    if sessKZ and strongBull and bFVG[i] and bFage <= 5 and c[i] > (bTop[i]+bBot[i])/2 and c[i] > bBot[i] and abs(c[i]-o[i]) > a14*0.3 and c[i] >= (bTop[i]+bBot[i])/2:
         signals.append({"model": "FVG-Direct", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bBot[i]-a14*0.3})
-    if sessKZ and strongBear and sFVG[i] and sFage <= 5 and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2 and c[i] < sTop[i] and abs(c[i]-o[i]) > a14*0.3:
+    if sessKZ and strongBear and sFVG[i] and sFage <= 5 and c[i] < (sTop[i]+sBot[i])/2 and c[i] < sTop[i] and abs(c[i]-o[i]) > a14*0.3 and c[i] <= (sTop[i]+sBot[i])/2:
         signals.append({"model": "FVG-Direct", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
 
     # 3. OB-Pro
-    if sessKZ and strongBull and bOB[i] and (i - cbOBar) <= 10 and bull_mss[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and l[i] <= bOBMT[i] and l[i] >= bOBL[i] and c[i] > o[i] and c[i] > bOBMT[i]:
+    if sessKZ and strongBull and bOB[i] and (i - cbOBar) <= 10 and bull_mss[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and c[i] > o[i] and c[i] >= bOBMT[i]:
         signals.append({"model": "OB-Pro", "dir": "BUY", "entry": bOBMT[i], "sl": bOBL[i]-a14*0.3})
-    if sessKZ and strongBear and sOB[i] and (i - csOBar) <= 10 and bear_mss[i] and not np.isnan(swingEq) and sOBMT[i] > swingEq and h[i] >= sOBMT[i] and h[i] <= sOBH[i] and c[i] < o[i] and c[i] < sOBMT[i]:
+    if sessKZ and strongBear and sOB[i] and (i - csOBar) <= 10 and bear_mss[i] and not np.isnan(swingEq) and sOBMT[i] > swingEq and c[i] < o[i] and c[i] <= sOBMT[i]:
         signals.append({"model": "OB-Pro", "dir": "SELL", "entry": sOBMT[i], "sl": sOBH[i]+a14*0.3})
 
     # 4. SMR
-    if sessKZ and sSweepOK[i] and bull_mss[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2 and (c[i]-o[i]) > a14*0.5:
+    if sessKZ and sSweepOK[i] and bull_mss[i] and bFVG[i] and c[i] > (bTop[i]+bBot[i])/2 and (c[i]-o[i]) > a14*0.5 and c[i] >= (bTop[i]+bBot[i])/2:
         signals.append({"model": "SMR", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bBot[i]-a14*0.3})
-    if sessKZ and bSweepOK[i] and bear_mss[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2 and (o[i]-c[i]) > a14*0.5:
+    if sessKZ and bSweepOK[i] and bear_mss[i] and sFVG[i] and c[i] < (sTop[i]+sBot[i])/2 and (o[i]-c[i]) > a14*0.5 and c[i] <= (sTop[i]+sBot[i])/2:
         signals.append({"model": "SMR", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
 
     # 5. Mitigation
-    if sessKZ and strongBull and bMit[i] and (i - cbMBar_) <= 8 and l[i] <= bMitCE[i] and l[i] >= bMitL[i] and c[i] > o[i] and c[i] > bMitCE[i] and (c[i]-o[i]) > a14*0.4:
+    if sessKZ and strongBull and bMit[i] and (i - cbMBar_) <= 8 and c[i] > o[i] and c[i] > bMitCE[i] and (c[i]-o[i]) > a14*0.4 and c[i] >= bMitCE[i]:
         signals.append({"model": "Mitigation", "dir": "BUY", "entry": bMitCE[i], "sl": bMitL[i]-a14*0.3})
-    if sessKZ and strongBear and sMit[i] and (i - csMBar_) <= 8 and h[i] >= sMitCE[i] and h[i] <= sMitH[i] and c[i] < o[i] and c[i] < sMitCE[i] and (o[i]-c[i]) > a14*0.4:
+    if sessKZ and strongBear and sMit[i] and (i - csMBar_) <= 8 and c[i] < o[i] and c[i] < sMitCE[i] and (o[i]-c[i]) > a14*0.4 and c[i] <= sMitCE[i]:
         signals.append({"model": "Mitigation", "dir": "SELL", "entry": sMitCE[i], "sl": sMitH[i]+a14*0.3})
 
     # 6. MMBM
-    if inAMKZ and bSweepOK[i] and bull_mss[i] and bOB[i] and l[i] <= bOBMT[i] and l[i] >= bOBL[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and trendUp:
+    if inAMKZ and bSweepOK[i] and bull_mss[i] and bOB[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and trendUp and c[i] >= bOBMT[i]:
         signals.append({"model": "MMBM", "dir": "BUY", "entry": bOBMT[i], "sl": bOBL[i]-a14*0.3})
 
     # 7. 2022
-    if sessions["SB-AM"] and bSweepOK[i] and bull_mss[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and l[i] >= bBot[i] and trendUp:
+    if sessions["SB-AM"] and bSweepOK[i] and bull_mss[i] and bFVG[i] and trendUp and c[i] >= (bTop[i]+bBot[i])/2:
         signals.append({"model": "2022", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bBot[i]-a14*0.3})
-    if sessions["SB-AM"] and sSweepOK[i] and bear_mss[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and h[i] <= sTop[i] and trendDown:
+    if sessions["SB-AM"] and sSweepOK[i] and bear_mss[i] and sFVG[i] and trendDown and c[i] <= (sTop[i]+sBot[i])/2:
         signals.append({"model": "2022", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
 
     # 8. Reaper (Sell only)
-    if sessKZ and strongBear and not np.isnan(swingEq) and c[i] > swingEq and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and h[i] <= sTop[i] and c[i] < o[i]:
+    if sessKZ and strongBear and not np.isnan(swingEq) and c[i] > swingEq and sFVG[i] and c[i] < o[i] and c[i] <= (sTop[i]+sBot[i])/2:
         signals.append({"model": "Reaper", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
 
     # 9. SBPM-MSS
-    if sessions["SB-PM"] and bull_mss[i] and bFVG[i] and trendUp:
+    if sessions["SB-PM"] and bull_mss[i] and bFVG[i] and trendUp and c[i] >= (bTop[i]+bBot[i])/2:
         signals.append({"model": "SBPM-MSS", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bSweepLow[i]-a14*0.3})
-    if sessions["SB-PM"] and bear_mss[i] and sFVG[i] and trendDown:
+    if sessions["SB-PM"] and bear_mss[i] and sFVG[i] and trendDown and c[i] <= (sTop[i]+sBot[i])/2:
         signals.append({"model": "SBPM-MSS", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sSweepHigh[i]+a14*0.3})
 
     # 10. Judas
@@ -383,7 +427,7 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
             
     return valid_signals
 
-# ==================== إدارة الصفقات ====================
+# ==================== إدارة الصفقات المفتوحة ====================
 def manage_active_trades(state, current_price, now_utc):
     if "active_trades" not in state: state["active_trades"] = []
     
@@ -396,7 +440,7 @@ def manage_active_trades(state, current_price, now_utc):
         bars_elapsed = (now_utc - entry_time).total_seconds() / 1800 
         
         if bars_elapsed >= MAX_BARS_TRADE:
-            print(f"Time Exit for {trade['model']}")
+            print(f"Time Exit for {trade['model']}", flush=True)
             send_update_msg(trade, "TIME", current_price)
             state["active_trades"].remove(trade)
             continue
@@ -404,52 +448,52 @@ def manage_active_trades(state, current_price, now_utc):
         if d == "BUY":
             if not trade["tp1_hit"] and current_price >= tp1:
                 trade["tp1_hit"] = True; trade["sl"] = e
-                print(f"TP1 Hit for {trade['model']}")
+                print(f"TP1 Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, "TP1")
             if trade["tp1_hit"] and not trade["tp2_hit"] and current_price >= tp2:
                 trade["tp2_hit"] = True
-                print(f"TP2 Hit for {trade['model']}")
+                print(f"TP2 Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, "TP2")
             if trade["tp2_hit"] and not trade["tp3_hit"] and current_price >= tp3:
-                print(f"TP3 Hit for {trade['model']}")
+                print(f"TP3 Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, "TP3")
                 state["active_trades"].remove(trade); continue
             if current_price <= trade["sl"]:
                 event = "BE" if trade["tp1_hit"] else "SL"
-                print(f"{event} Hit for {trade['model']}")
+                print(f"{event} Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, event)
                 state["active_trades"].remove(trade); continue
                 
         elif d == "SELL":
             if not trade["tp1_hit"] and current_price <= tp1:
                 trade["tp1_hit"] = True; trade["sl"] = e
-                print(f"TP1 Hit for {trade['model']}")
+                print(f"TP1 Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, "TP1")
             if trade["tp1_hit"] and not trade["tp2_hit"] and current_price <= tp2:
                 trade["tp2_hit"] = True
-                print(f"TP2 Hit for {trade['model']}")
+                print(f"TP2 Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, "TP2")
             if trade["tp2_hit"] and not trade["tp3_hit"] and current_price <= tp3:
-                print(f"TP3 Hit for {trade['model']}")
+                print(f"TP3 Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, "TP3")
                 state["active_trades"].remove(trade); continue
             if current_price >= trade["sl"]:
                 event = "BE" if trade["tp1_hit"] else "SL"
-                print(f"{event} Hit for {trade['model']}")
+                print(f"{event} Hit for {trade['model']}", flush=True)
                 send_update_msg(trade, event)
                 state["active_trades"].remove(trade); continue
 
 # ==================== المحرك الرئيسي ====================
 def main():
-    print("Starting ICT Gold v28 Elite Bot...", flush=True)
+    print("Starting ICT Gold v28 Elite Bot (Limit Orders Mode)...", flush=True)
     
-    # تحميل الحالة مع التوافق مع الملف القديم
-    state = {"active_trades": [], "last_day": "", "last_entry_times": {}}
+    state = {"active_trades": [], "pending_orders": [], "last_day": "", "last_entry_times": {}}
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, 'r') as f: 
                 loaded = json.load(f)
                 if "active_trades" not in loaded: loaded["active_trades"] = []
+                if "pending_orders" not in loaded: loaded["pending_orders"] = []
                 if "last_entry_times" not in loaded: loaded["last_entry_times"] = {}
                 state = loaded
         except Exception as e:
@@ -476,23 +520,46 @@ def main():
 
     print("Fetching M30 data...", flush=True)
     df_m30 = fetch_candles(account_id, "M30", 500, 500)
-    if df_m30 is None:
-        print("Failed to fetch M30 data. Exiting.", flush=True)
-        return
+    if df_m30 is None: return
         
     print("Fetching H1 data...", flush=True)
     df_h1 = fetch_candles(account_id, "H1", 500, 500)
-    if df_h1 is None:
-        print("Failed to fetch H1 data. Exiting.", flush=True)
-        return
+    if df_h1 is None: return
 
     current_price = float(df_m30.iloc[-1]["close"])
     print(f"Current Price: {current_price} | Time: {fmt_mosul_12h(now_utc)}", flush=True)
 
-    # 1. إدارة الصفقات المفتوحة
+    # 1. إدارة الصفقات النشطة
     manage_active_trades(state, current_price, now_utc)
 
-    # 2. إشارات جديدة
+    # 2. إدارة الأوامر المعلقة
+    for order in state["pending_orders"][:]:
+        created_at = datetime.fromisoformat(order["created_at"])
+        time_elapsed = (now_utc - created_at).total_seconds()
+        
+        # فحص الانتهاء (ساعة)
+        if time_elapsed > (EXPIRY_MINUTES * 60):
+            print(f"Cancelled (Expired): {order['model']}", flush=True)
+            state["pending_orders"].remove(order)
+            send_cancelled_msg(order)
+            continue
+            
+        # فحص التفعيل
+        is_filled = False
+        if order["direction"] == "BUY" and current_price <= order["entry"]:
+            is_filled = True
+        elif order["direction"] == "SELL" and current_price >= order["entry"]:
+            is_filled = True
+            
+        if is_filled:
+            print(f"Filled: {order['model']}", flush=True)
+            state["pending_orders"].remove(order)
+            order["entry_time"] = now_utc.isoformat()
+            state["active_trades"].append(order)
+            state["last_entry_times"][order["model"]] = now_utc.isoformat()
+            send_filled_msg(order)
+
+    # 3. فحص إشارات جديدة
     print("Checking signals...", flush=True)
     signals = check_all_models(df_m30, df_h1, now_utc, now_ny)
     print(f"Signals found: {len(signals)}", flush=True)
@@ -500,32 +567,36 @@ def main():
     for sig in signals:
         model_name = sig["model"]
         
-        # فحص الـ Cooldown (10 شمعات = 5 ساعات تقريباً)
+        # كول داون
         last_entry = state.get("last_entry_times", {}).get(model_name)
         if last_entry:
             last_dt = datetime.fromisoformat(last_entry)
             if (now_utc - last_dt).total_seconds() / 1800 < COOLDOWN_BARS:
-                print(f"Cooldown active for {model_name}", flush=True)
                 continue
 
-        # فحص إذا كان النموذج عنده صفقة مفتوحة حالياً
-        is_active = any(t["model"] == model_name for t in state["active_trades"])
-        if is_active:
-            print(f"Trade already active for {model_name}", flush=True)
-            continue
+        # فحص التكرار
+        if any(t["model"] == model_name for t in state["active_trades"]): continue
+        if any(t["model"] == model_name for t in state["pending_orders"]): continue
 
         trade_record = {
             "model": model_name, "direction": sig["dir"],
             "entry": round(sig["entry"], 2), "sl": round(sig["sl"], 2),
             "tp1": sig["tp1"], "tp2": sig["tp2"], "tp3": sig["tp3"],
-            "risk_pts": sig["risk_pts"], "entry_time": now_utc.isoformat(),
+            "risk_pts": sig["risk_pts"],
             "tp1_hit": False, "tp2_hit": False, "tp3_hit": False
         }
-        
-        state["active_trades"].append(trade_record)
-        state["last_entry_times"][model_name] = now_utc.isoformat()
-        send_new_trade_msg(trade_record)
-        print(f"✅ New Trade: {model_name} {sig['dir']} @ {sig['entry']}", flush=True)
+
+        if model_name in ["Judas", "TGIF"]:
+            trade_record["entry_time"] = now_utc.isoformat()
+            state["active_trades"].append(trade_record)
+            state["last_entry_times"][model_name] = now_utc.isoformat()
+            send_new_trade_msg(trade_record)
+            print(f"✅ New Market Trade: {model_name}", flush=True)
+        else:
+            trade_record["created_at"] = now_utc.isoformat()
+            state["pending_orders"].append(trade_record)
+            send_pending_msg(trade_record)
+            print(f"⏳ New Pending Order: {model_name}", flush=True)
 
     with open(STATE_FILE, 'w') as f:
         json.dump(state, f, indent=2)
