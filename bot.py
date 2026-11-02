@@ -160,7 +160,7 @@ def open_session(max_retries=3):
             if attempt < max_retries: time.sleep(5)
     return None
 
-def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500):
+def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500, divisor=1.0):
     url = BASE_URL + f"/v1/accounts/{account_id}/candles"
     headers = {"Authorization": "Bearer " + TICKERALL_API_KEY}
     params = {"symbol": symbol, "timeframe": timeframe, "limit": limit, "hours": hours}
@@ -174,7 +174,8 @@ def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500):
         df["datetime"] = pd.to_datetime(df["timestamp"], unit="s", utc=True) - pd.Timedelta(hours=SERVER_OFFSET_HOURS)
         df = df[["datetime", "open", "high", "low", "close"]].copy()
         for c in ["open", "high", "low", "close"]:
-            df[c] = pd.to_numeric(df[c])
+            # هنا نقسم السعر على القاسم لتصحيحه
+            df[c] = pd.to_numeric(df[c]) / divisor
         return df.sort_values("datetime").reset_index(drop=True)
     except Exception as e:
         return None
@@ -382,22 +383,21 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg):
 
     valid_signals = []
     for sig in signals:
-        # استخدام إعدادات الزوج الحالي
         mult = cfg["mult"]
+        digits = cfg["digits"] # استخدام الخانات العشرية الصحيحة
         risk = abs(sig["entry"] - sig["sl"]) * mult
         
         if cfg["min_sl"] <= risk <= cfg["max_sl"]:
-            # استخدام أهداف الزوج
             tp1_pts, tp2_pts, tp3_pts = cfg["tp"]
             
             if sig["dir"] == "BUY":
-                sig["tp1"] = round(sig["entry"] + tp1_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
-                sig["tp2"] = round(sig["entry"] + tp2_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
-                sig["tp3"] = round(sig["entry"] + tp3_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
+                sig["tp1"] = round(sig["entry"] + tp1_pts/mult, digits)
+                sig["tp2"] = round(sig["entry"] + tp2_pts/mult, digits)
+                sig["tp3"] = round(sig["entry"] + tp3_pts/mult, digits)
             else:
-                sig["tp1"] = round(sig["entry"] - tp1_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
-                sig["tp2"] = round(sig["entry"] - tp2_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
-                sig["tp3"] = round(sig["entry"] - tp3_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
+                sig["tp1"] = round(sig["entry"] - tp1_pts/mult, digits)
+                sig["tp2"] = round(sig["entry"] - tp2_pts/mult, digits)
+                sig["tp3"] = round(sig["entry"] - tp3_pts/mult, digits)
             sig["risk_pts"] = risk
             valid_signals.append(sig)
             
@@ -407,7 +407,7 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg):
 def manage_active_trades(state, symbol, current_price, now_utc):
     if "active_trades" not in state: state["active_trades"] = []
     for trade in state["active_trades"][:]:
-        if trade.get("symbol") != symbol: continue # نتابع فقط صفقات هذا الزوج
+        if trade.get("symbol") != symbol: continue
         
         d = trade["direction"]; e = trade["entry"]
         tp1 = trade["tp1"]; tp2 = trade["tp2"]; tp3 = trade["tp3"]
@@ -472,12 +472,13 @@ def main():
     account_id = open_session()
     if not account_id: return
 
-    # المرور على كل زوج من الإعدادات
     for symbol, cfg in INSTRUMENTS.items():
         print(f"\n--- Checking {symbol} ---", flush=True)
         
-        df_m30 = fetch_candles(account_id, symbol, "M30", 500, 500)
-        df_h1 = fetch_candles(account_id, symbol, "H1", 500, 500)
+        # قراءة قاسم السعر
+        div = cfg.get("divisor", 1.0)
+        df_m30 = fetch_candles(account_id, symbol, "M30", 500, 500, divisor=div)
+        df_h1 = fetch_candles(account_id, symbol, "H1", 500, 500, divisor=div)
         
         if df_m30 is None or df_h1 is None:
             print(f"Failed to fetch data for {symbol}", flush=True)
@@ -491,7 +492,7 @@ def main():
 
         # 2. إدارة الأوامر المعلقة
         for order in state["pending_orders"][:]:
-            if order.get("symbol") != symbol: continue # نتابع فقط أوامر هذا الزوج
+            if order.get("symbol") != symbol: continue 
             
             created_at = datetime.fromisoformat(order["created_at"])
             time_elapsed = (now_utc - created_at).total_seconds()
@@ -521,21 +522,17 @@ def main():
         for sig in signals:
             model_name = sig["model"]
             
-            # فحص إذا كان النموذج مسموح لهذا الزوج
             if model_name not in cfg["allowed_models"]:
                 continue
 
-            # كول داون
             last_entry = state.get("last_entry_times", {}).get(f"{symbol}_{model_name}")
             if last_entry:
                 last_dt = datetime.fromisoformat(last_entry)
                 if (now_utc - last_dt).total_seconds() / 1800 < COOLDOWN_BARS: continue
 
-            # فحص التكرار لنفس الزوج
             if any(t["model"] == model_name and t.get("symbol") == symbol for t in state["active_trades"]): continue
             if any(t["model"] == model_name and t.get("symbol") == symbol for t in state["pending_orders"]): continue
 
-            # 🛑 فلتر المسافة (Proximity Filter) 🛑
             dist_pts = abs(sig["entry"] - current_price) * cfg["mult"]
             
             if dist_pts > cfg["max_dist"]:
@@ -545,14 +542,13 @@ def main():
             trade_record = {
                 "symbol": symbol,
                 "model": model_name, "direction": sig["dir"],
-                "entry": round(sig["entry"], 5 if cfg["mult"] == 100000 else 3 if cfg["mult"] == 1000 else 2), 
-                "sl": round(sig["sl"], 5 if cfg["mult"] == 100000 else 3 if cfg["mult"] == 1000 else 2),
+                "entry": round(sig["entry"], cfg["digits"]), 
+                "sl": round(sig["sl"], cfg["digits"]),
                 "tp1": sig["tp1"], "tp2": sig["tp2"], "tp3": sig["tp3"],
                 "risk_pts": sig["risk_pts"],
                 "tp1_hit": False, "tp2_hit": False, "tp3_hit": False
             }
 
-            # فحص إذا كان السعر لامس الدخول (Market Order) أو قريب (Limit Order)
             is_market = False
             if sig["dir"] == "BUY" and current_price <= sig["entry"]:
                 is_market = True
