@@ -8,6 +8,9 @@ import traceback
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+# استدعاء الإعدادات من الملف الجديد
+from config import INSTRUMENTS, COOLDOWN_BARS, MAX_BARS_TRADE, EXPIRY_MINUTES, SERVER_OFFSET_HOURS
+
 # ==================== الإعدادات والمفاتيح ====================
 TICKERALL_API_KEY = os.environ.get("TICKERALL_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -21,23 +24,7 @@ STATE_FILE = "state.json"
 MOSUL_TZ = ZoneInfo("Asia/Baghdad")
 NY_TZ = ZoneInfo("America/New_York")
 BASE_URL = "https://api.tickerall.com"
-SERVER_OFFSET_HOURS = 3
 
-# ==================== ثوابت الاستراتيجية ====================
-MULT = 10.0
-MIN_SL_PTS = 40.0
-MAX_SL_PTS = 130.0
-SL_BUF_PTS = 10.0
-COOLDOWN_BARS = 10
-MAX_BARS_TRADE = 60
-TP1_PTS = 100.0
-TP2_PTS = 150.0
-TP3_PTS = 200.0
-SYMBOL = "XAUUSD#"
-EXPIRY_MINUTES = 60  # إلغاء الأمر المعلق بعد ساعة
-MAX_DISTANCE_FOR_LIMIT_PTS = 40.0  # أقصى مسافة بالأعوام للسماح بالأمر المعلق
-
-# 🔴 ضع هنا IDs الستيكرات (إذا لم تتوفر اتركها فارغة)
 STICKER_NEW_TRADE = "" 
 STICKER_TP = ""
 STICKER_SL = ""
@@ -69,6 +56,7 @@ def send_pending_msg(trade, current_price):
     direction_icon = "🟢 <b>BUY LIMIT</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL LIMIT</b>"
     msg = (
         f"⏳ <b>أمر معلق (Limit Order)!</b> ⏳\n\n"
+        f"💎 <b>الزوج:</b> {trade['symbol']}\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
         f"💰 <b>سعر الدخول (Limit):</b> <code>{trade['entry']}</code>\n"
@@ -87,6 +75,7 @@ def send_filled_msg(trade):
     direction_icon = "🟢 <b>BUY</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL</b>"
     msg = (
         f"✅ <b>تم تفعيل الصفقة!</b> ✅\n\n"
+        f"💎 <b>الزوج:</b> {trade['symbol']}\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
         f"💰 <b>الدخول:</b> <code>{trade['entry']}</code>\n"
@@ -102,6 +91,7 @@ def send_filled_msg(trade):
 def send_cancelled_msg(trade):
     msg = (
         f"❌ <b>تم إلغاء الأمر المعلق (Expired)</b> ❌\n\n"
+        f"💎 <b>الزوج:</b> {trade['symbol']}\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"💰 <b>سعر الدخول:</b> <code>{trade['entry']}</code>\n"
         f"⏰ <b>السبب:</b> لم يتم الوصول للسعر خلال ساعة.\n"
@@ -112,6 +102,7 @@ def send_new_trade_msg(trade):
     direction_icon = "🟢 <b>BUY</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL</b>"
     msg = (
         f"🚀 <b>صفقة جديدة (Market)!</b> 🚀\n\n"
+        f"💎 <b>الزوج:</b> {trade['symbol']}\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
         f"💰 <b>الدخول:</b> <code>{trade['entry']}</code>\n"
@@ -127,25 +118,26 @@ def send_new_trade_msg(trade):
 def send_update_msg(trade, event, current_price=None):
     model = trade['model']
     e = trade['entry']
+    sym = trade['symbol']
     now_str = fmt_mosul_12h(datetime.now(ZoneInfo('UTC')))
     
     if event == "TP1":
-        msg = f"✅ <b>ضرب الهدف الأول!</b> 🎯\n\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n🛡️ <b>تم نقل الستوب إلى نقطة الدخول (BE)</b>\n⏰ {now_str}"
+        msg = f"✅ <b>ضرب الهدف الأول!</b> 🎯\n\n💎 <b>الزوج:</b> {sym}\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n🛡️ <b>تم نقل الستوب إلى نقطة الدخول (BE)</b>\n⏰ {now_str}"
         send_sticker(STICKER_TP)
     elif event == "TP2":
-        msg = f"✅ <b>ضرب الهدف الثاني!</b> 🎯🎯\n\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n⏰ {now_str}"
+        msg = f"✅ <b>ضرب الهدف الثاني!</b> 🎯🎯\n\n💎 <b>الزوج:</b> {sym}\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n⏰ {now_str}"
         send_sticker(STICKER_TP)
     elif event == "TP3":
-        msg = f"🏆 <b>ضرب الهدف الثالث!</b> 🎯🎯🎯\n\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n🎉 مبروك الأرباح الكاملة!"
+        msg = f"🏆 <b>ضرب الهدف الثالث!</b> 🎯🎯🎯\n\n💎 <b>الزوج:</b> {sym}\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n🎉 مبروك الأرباح الكاملة!"
         send_sticker(STICKER_TP)
     elif event == "SL":
-        msg = f"❌ <b>ضرب الستوب!</b> 🚫\n\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n⏰ {now_str}"
+        msg = f"❌ <b>ضرب الستوب!</b> 🚫\n\n💎 <b>الزوج:</b> {sym}\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>\n⏰ {now_str}"
         send_sticker(STICKER_SL)
     elif event == "BE":
-        msg = f"🛡️ <b>ضرب الستوب بعد الهدف الأول (Break Even)</b>\n\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>"
+        msg = f"🛡️ <b>ضرب الستوب بعد الهدف الأول (Break Even)</b>\n\n💎 <b>الزوج:</b> {sym}\n📊 <b>النموذج:</b> {model}\n💰 <b>الدخول:</b> <code>{e}</code>"
         send_sticker(STICKER_SL)
     elif event == "TIME":
-        msg = f"⏳ <b>إغلاق الصفقة (Time Exit)</b>\n\n📊 <b>النموذج:</b> {model}\n💰 <b>السعر الحالي:</b> <code>{current_price}</code>"
+        msg = f"⏳ <b>إغلاق الصفقة (Time Exit)</b>\n\n💎 <b>الزوج:</b> {sym}\n📊 <b>النموذج:</b> {model}\n💰 <b>السعر الحالي:</b> <code>{current_price}</code>"
     
     send_telegram_raw(msg)
 
@@ -168,10 +160,10 @@ def open_session(max_retries=3):
             if attempt < max_retries: time.sleep(5)
     return None
 
-def fetch_candles(account_id, timeframe, limit=500, hours=500):
+def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500):
     url = BASE_URL + f"/v1/accounts/{account_id}/candles"
     headers = {"Authorization": "Bearer " + TICKERALL_API_KEY}
-    params = {"symbol": SYMBOL, "timeframe": timeframe, "limit": limit, "hours": hours}
+    params = {"symbol": symbol, "timeframe": timeframe, "limit": limit, "hours": hours}
     try:
         r = requests.get(url, headers=headers, params=params, timeout=90)
         if r.status_code != 200: return None
@@ -222,7 +214,7 @@ def session_flags(dt):
     }
 
 # ==================== المنطق الأساسي ====================
-def check_all_models(df_m30, df_h1, now_utc, now_ny):
+def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg):
     n = len(df_m30)
     if n < 50: return []
     
@@ -366,7 +358,7 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
     if sessions["SB-AM"] and sSweepOK[i] and bear_mss[i] and sFVG[i] and trendDown and c[i] <= (sTop[i]+sBot[i])/2:
         signals.append({"model": "2022", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
 
-    # 8. Reaper (Sell only)
+    # 8. Reaper
     if sessKZ and strongBear and not np.isnan(swingEq) and c[i] > swingEq and sFVG[i] and c[i] < o[i] and c[i] <= (sTop[i]+sBot[i])/2:
         signals.append({"model": "Reaper", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
 
@@ -390,25 +382,33 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny):
 
     valid_signals = []
     for sig in signals:
-        risk = abs(sig["entry"] - sig["sl"]) * MULT
-        if MIN_SL_PTS <= risk <= MAX_SL_PTS:
+        # استخدام إعدادات الزوج الحالي
+        mult = cfg["mult"]
+        risk = abs(sig["entry"] - sig["sl"]) * mult
+        
+        if cfg["min_sl"] <= risk <= cfg["max_sl"]:
+            # استخدام أهداف الزوج
+            tp1_pts, tp2_pts, tp3_pts = cfg["tp"]
+            
             if sig["dir"] == "BUY":
-                sig["tp1"] = round(sig["entry"] + TP1_PTS/MULT, 2)
-                sig["tp2"] = round(sig["entry"] + TP2_PTS/MULT, 2)
-                sig["tp3"] = round(sig["entry"] + TP3_PTS/MULT, 2)
+                sig["tp1"] = round(sig["entry"] + tp1_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
+                sig["tp2"] = round(sig["entry"] + tp2_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
+                sig["tp3"] = round(sig["entry"] + tp3_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
             else:
-                sig["tp1"] = round(sig["entry"] - TP1_PTS/MULT, 2)
-                sig["tp2"] = round(sig["entry"] - TP2_PTS/MULT, 2)
-                sig["tp3"] = round(sig["entry"] - TP3_PTS/MULT, 2)
+                sig["tp1"] = round(sig["entry"] - tp1_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
+                sig["tp2"] = round(sig["entry"] - tp2_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
+                sig["tp3"] = round(sig["entry"] - tp3_pts/mult, 5 if mult == 100000 else 3 if mult == 1000 else 2)
             sig["risk_pts"] = risk
             valid_signals.append(sig)
             
     return valid_signals
 
 # ==================== إدارة الصفقات ====================
-def manage_active_trades(state, current_price, now_utc):
+def manage_active_trades(state, symbol, current_price, now_utc):
     if "active_trades" not in state: state["active_trades"] = []
     for trade in state["active_trades"][:]:
+        if trade.get("symbol") != symbol: continue # نتابع فقط صفقات هذا الزوج
+        
         d = trade["direction"]; e = trade["entry"]
         tp1 = trade["tp1"]; tp2 = trade["tp2"]; tp3 = trade["tp3"]
         
@@ -444,7 +444,7 @@ def manage_active_trades(state, current_price, now_utc):
 
 # ==================== المحرك الرئيسي ====================
 def main():
-    print("Starting ICT Gold v28 Elite Bot (Proximity Filter)...", flush=True)
+    print("Starting Multi-Asset Elite Bot (v29)...", flush=True)
     state = {"active_trades": [], "pending_orders": [], "last_day": "", "last_entry_times": {}}
     if os.path.exists(STATE_FILE):
         try:
@@ -472,90 +472,104 @@ def main():
     account_id = open_session()
     if not account_id: return
 
-    df_m30 = fetch_candles(account_id, "M30", 500, 500)
-    df_h1 = fetch_candles(account_id, "H1", 500, 500)
-    if df_m30 is None or df_h1 is None: return
-
-    current_price = float(df_m30.iloc[-1]["close"])
-    print(f"Current Price: {current_price} | Time: {fmt_mosul_12h(now_utc)}", flush=True)
-
-    # 1. إدارة الصفقات النشطة
-    manage_active_trades(state, current_price, now_utc)
-
-    # 2. إدارة الأوامر المعلقة
-    for order in state["pending_orders"][:]:
-        created_at = datetime.fromisoformat(order["created_at"])
-        time_elapsed = (now_utc - created_at).total_seconds()
+    # المرور على كل زوج من الإعدادات
+    for symbol, cfg in INSTRUMENTS.items():
+        print(f"\n--- Checking {symbol} ---", flush=True)
         
-        if time_elapsed > (EXPIRY_MINUTES * 60):
-            print(f"Cancelled (Expired): {order['model']}", flush=True)
-            state["pending_orders"].remove(order)
-            send_cancelled_msg(order)
-            continue
-            
-        is_filled = False
-        if order["direction"] == "BUY" and current_price <= order["entry"]: is_filled = True
-        elif order["direction"] == "SELL" and current_price >= order["entry"]: is_filled = True
-            
-        if is_filled:
-            print(f"Filled: {order['model']}", flush=True)
-            state["pending_orders"].remove(order)
-            order["entry_time"] = now_utc.isoformat()
-            state["active_trades"].append(order)
-            state["last_entry_times"][order["model"]] = now_utc.isoformat()
-            send_filled_msg(order)
-
-    # 3. فحص إشارات جديدة
-    signals = check_all_models(df_m30, df_h1, now_utc, now_ny)
-    print(f"Signals found: {len(signals)}", flush=True)
-    
-    for sig in signals:
-        model_name = sig["model"]
+        df_m30 = fetch_candles(account_id, symbol, "M30", 500, 500)
+        df_h1 = fetch_candles(account_id, symbol, "H1", 500, 500)
         
-        # كول داون
-        last_entry = state.get("last_entry_times", {}).get(model_name)
-        if last_entry:
-            last_dt = datetime.fromisoformat(last_entry)
-            if (now_utc - last_dt).total_seconds() / 1800 < COOLDOWN_BARS: continue
-
-        # فحص التكرار
-        if any(t["model"] == model_name for t in state["active_trades"]): continue
-        if any(t["model"] == model_name for t in state["pending_orders"]): continue
-
-        # 🛑 فلتر المسافة (Proximity Filter) 🛑
-        # حساب المسافة بين السعر الحالي وسعر الدخول بالنقاط
-        dist_pts = abs(sig["entry"] - current_price) * MULT
-        
-        if dist_pts > MAX_DISTANCE_FOR_LIMIT_PTS:
-            print(f"⏭️ Ignored {model_name}: Entry is too far ({dist_pts:.1f} pts)", flush=True)
+        if df_m30 is None or df_h1 is None:
+            print(f"Failed to fetch data for {symbol}", flush=True)
             continue
 
-        trade_record = {
-            "model": model_name, "direction": sig["dir"],
-            "entry": round(sig["entry"], 2), "sl": round(sig["sl"], 2),
-            "tp1": sig["tp1"], "tp2": sig["tp2"], "tp3": sig["tp3"],
-            "risk_pts": sig["risk_pts"],
-            "tp1_hit": False, "tp2_hit": False, "tp3_hit": False
-        }
+        current_price = float(df_m30.iloc[-1]["close"])
+        print(f"Current Price: {current_price} | Time: {fmt_mosul_12h(now_utc)}", flush=True)
 
-        # فحص إذا كان السعر لامس الدخول (Market Order) أو قريب (Limit Order)
-        is_market = False
-        if sig["dir"] == "BUY" and current_price <= sig["entry"]:
-            is_market = True
-        elif sig["dir"] == "SELL" and current_price >= sig["entry"]:
-            is_market = True
+        # 1. إدارة الصفقات النشطة
+        manage_active_trades(state, symbol, current_price, now_utc)
 
-        if model_name in ["Judas", "TGIF"] or is_market:
-            trade_record["entry_time"] = now_utc.isoformat()
-            state["active_trades"].append(trade_record)
-            state["last_entry_times"][model_name] = now_utc.isoformat()
-            send_new_trade_msg(trade_record)
-            print(f"✅ Market Trade: {model_name}", flush=True)
-        else:
-            trade_record["created_at"] = now_utc.isoformat()
-            state["pending_orders"].append(trade_record)
-            send_pending_msg(trade_record, current_price)
-            print(f"⏳ Pending Order (Close by {dist_pts:.1f} pts): {model_name}", flush=True)
+        # 2. إدارة الأوامر المعلقة
+        for order in state["pending_orders"][:]:
+            if order.get("symbol") != symbol: continue # نتابع فقط أوامر هذا الزوج
+            
+            created_at = datetime.fromisoformat(order["created_at"])
+            time_elapsed = (now_utc - created_at).total_seconds()
+            
+            if time_elapsed > (EXPIRY_MINUTES * 60):
+                print(f"Cancelled (Expired): {order['model']} on {symbol}", flush=True)
+                state["pending_orders"].remove(order)
+                send_cancelled_msg(order)
+                continue
+                
+            is_filled = False
+            if order["direction"] == "BUY" and current_price <= order["entry"]: is_filled = True
+            elif order["direction"] == "SELL" and current_price >= order["entry"]: is_filled = True
+                
+            if is_filled:
+                print(f"Filled: {order['model']} on {symbol}", flush=True)
+                state["pending_orders"].remove(order)
+                order["entry_time"] = now_utc.isoformat()
+                state["active_trades"].append(order)
+                state["last_entry_times"][f"{symbol}_{order['model']}"] = now_utc.isoformat()
+                send_filled_msg(order)
+
+        # 3. فحص إشارات جديدة
+        signals = check_all_models(df_m30, df_h1, now_utc, now_ny, cfg)
+        print(f"Signals found: {len(signals)}", flush=True)
+        
+        for sig in signals:
+            model_name = sig["model"]
+            
+            # فحص إذا كان النموذج مسموح لهذا الزوج
+            if model_name not in cfg["allowed_models"]:
+                continue
+
+            # كول داون
+            last_entry = state.get("last_entry_times", {}).get(f"{symbol}_{model_name}")
+            if last_entry:
+                last_dt = datetime.fromisoformat(last_entry)
+                if (now_utc - last_dt).total_seconds() / 1800 < COOLDOWN_BARS: continue
+
+            # فحص التكرار لنفس الزوج
+            if any(t["model"] == model_name and t.get("symbol") == symbol for t in state["active_trades"]): continue
+            if any(t["model"] == model_name and t.get("symbol") == symbol for t in state["pending_orders"]): continue
+
+            # 🛑 فلتر المسافة (Proximity Filter) 🛑
+            dist_pts = abs(sig["entry"] - current_price) * cfg["mult"]
+            
+            if dist_pts > cfg["max_dist"]:
+                print(f"⏭️ Ignored {model_name} on {symbol}: Entry is too far ({dist_pts:.1f} pts, max {cfg['max_dist']})", flush=True)
+                continue
+
+            trade_record = {
+                "symbol": symbol,
+                "model": model_name, "direction": sig["dir"],
+                "entry": round(sig["entry"], 5 if cfg["mult"] == 100000 else 3 if cfg["mult"] == 1000 else 2), 
+                "sl": round(sig["sl"], 5 if cfg["mult"] == 100000 else 3 if cfg["mult"] == 1000 else 2),
+                "tp1": sig["tp1"], "tp2": sig["tp2"], "tp3": sig["tp3"],
+                "risk_pts": sig["risk_pts"],
+                "tp1_hit": False, "tp2_hit": False, "tp3_hit": False
+            }
+
+            # فحص إذا كان السعر لامس الدخول (Market Order) أو قريب (Limit Order)
+            is_market = False
+            if sig["dir"] == "BUY" and current_price <= sig["entry"]:
+                is_market = True
+            elif sig["dir"] == "SELL" and current_price >= sig["entry"]:
+                is_market = True
+
+            if model_name in ["Judas", "TGIF"] or is_market:
+                trade_record["entry_time"] = now_utc.isoformat()
+                state["active_trades"].append(trade_record)
+                state["last_entry_times"][f"{symbol}_{model_name}"] = now_utc.isoformat()
+                send_new_trade_msg(trade_record)
+                print(f"✅ Market Trade: {model_name} on {symbol}", flush=True)
+            else:
+                trade_record["created_at"] = now_utc.isoformat()
+                state["pending_orders"].append(trade_record)
+                send_pending_msg(trade_record, current_price)
+                print(f"⏳ Pending Order on {symbol} (Close by {dist_pts:.1f} pts): {model_name}", flush=True)
 
     with open(STATE_FILE, 'w') as f:
         json.dump(state, f, indent=2)
