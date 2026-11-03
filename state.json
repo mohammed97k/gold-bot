@@ -2,21 +2,6 @@
   "active_trades": [],
   "pending_orders": [
     {
-      "symbol": "DJIUSD#",
-      "model": "FVG-Direct",
-      "direction": "SELL",
-      "entry": 51788.45,
-      "sl": 51846.7,
-      "tp1": 51688.45,
-      "tp2": 51588.45,
-      "tp3": 51488.45,
-      "risk_pts": 58.246599632642756,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-03T19:50:36.757010+00:00"
-    },
-    {
       "symbol": "NDXUSD#",
       "model": "FVG-Direct",
       "direction": "SELL",
