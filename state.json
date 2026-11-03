@@ -32,6 +32,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-03T07:25:33.933908+00:00"
+    },
+    {
+      "symbol": "NDXUSD#",
+      "model": "Mitigation",
+      "direction": "SELL",
+      "entry": 27986.8,
+      "sl": 28030.98,
+      "tp1": 27886.8,
+      "tp2": 27786.8,
+      "tp3": 27686.8,
+      "risk_pts": 44.17686730458445,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-03T08:05:32.785475+00:00"
     }
   ],
   "last_entry_times": {
