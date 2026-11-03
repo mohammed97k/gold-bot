@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "GBPJPY#",
+      "model": "Mitigation",
+      "direction": "BUY",
+      "entry": 211.682,
+      "sl": 211.585,
+      "tp1": 211.882,
+      "tp2": 211.982,
+      "tp3": 212.082,
+      "risk_pts": 9.657264366975937,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-03T07:25:33.933908+00:00"
+    }
+  ],
   "last_entry_times": {},
   "last_day": "2026-11-03"
 }
