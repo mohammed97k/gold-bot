@@ -17,7 +17,23 @@
       "entry_time": "2026-11-03T15:00:48.166930+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "DJIUSD#",
+      "model": "SMR",
+      "direction": "BUY",
+      "entry": 51742.3,
+      "sl": 51670.77,
+      "tp1": 51842.3,
+      "tp2": 51942.3,
+      "tp3": 52042.3,
+      "risk_pts": 71.52571092250582,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-03T15:40:37.147651+00:00"
+    }
+  ],
   "last_entry_times": {
     "XAUUSD#_Mitigation": "2026-11-03T07:50:38.275805+00:00",
     "NDXUSD#_Mitigation": "2026-11-03T08:10:38.837857+00:00",
