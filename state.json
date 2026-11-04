@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "GBPJPY#",
+      "model": "OB-Pro",
+      "direction": "BUY",
+      "entry": 213.616,
+      "sl": 213.467,
+      "tp1": 213.816,
+      "tp2": 213.916,
+      "tp3": 214.016,
+      "risk_pts": 14.848016964276667,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-04T13:40:37.275146+00:00"
+    }
+  ],
   "last_entry_times": {
     "NDXUSD#_OB-Pro": "2026-11-04T07:10:30.078369+00:00",
     "EURJPY#_SMR": "2026-11-04T07:25:31.320955+00:00"
