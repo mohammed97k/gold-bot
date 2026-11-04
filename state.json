@@ -15,6 +15,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-04T13:40:37.275146+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "Mitigation",
+      "direction": "BUY",
+      "entry": 4042.76,
+      "sl": 4035.82,
+      "tp1": 4052.76,
+      "tp2": 4062.76,
+      "tp3": 4072.76,
+      "risk_pts": 69.3119657920397,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-04T13:45:34.242539+00:00"
     }
   ],
   "last_entry_times": {
