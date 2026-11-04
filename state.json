@@ -17,7 +17,23 @@
       "entry_time": "2026-11-04T14:15:40.955008+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "FVG-Direct",
+      "direction": "BUY",
+      "entry": 4039.92,
+      "sl": 4034.67,
+      "tp1": 4049.92,
+      "tp2": 4059.92,
+      "tp3": 4069.92,
+      "risk_pts": 52.4376643819096,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-04T14:50:38.934384+00:00"
+    }
+  ],
   "last_entry_times": {
     "NDXUSD#_OB-Pro": "2026-11-04T07:10:30.078369+00:00",
     "EURJPY#_SMR": "2026-11-04T07:25:31.320955+00:00",
