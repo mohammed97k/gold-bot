@@ -5,16 +5,16 @@
       "symbol": "DJIUSD#",
       "model": "FVG-Direct",
       "direction": "BUY",
-      "entry": 52801.65,
-      "sl": 52718.07,
-      "tp1": 52901.65,
-      "tp2": 53001.65,
-      "tp3": 53101.65,
-      "risk_pts": 83.57529611334758,
+      "entry": 52997.25,
+      "sl": 52923.68,
+      "tp1": 53097.25,
+      "tp2": 53197.25,
+      "tp3": 53297.25,
+      "risk_pts": 73.57053593447199,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-04T15:25:26.915612+00:00"
+      "created_at": "2026-11-04T16:25:28.674664+00:00"
     }
   ],
   "last_entry_times": {
