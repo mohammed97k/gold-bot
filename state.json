@@ -1,22 +1,6 @@
 {
   "active_trades": [],
-  "pending_orders": [
-    {
-      "symbol": "EURJPY#",
-      "model": "FVG-Direct",
-      "direction": "BUY",
-      "entry": 177.438,
-      "sl": 177.337,
-      "tp1": 177.638,
-      "tp2": 177.738,
-      "tp3": 177.838,
-      "risk_pts": 10.068118652392855,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-04T07:10:30.078369+00:00"
-    }
-  ],
+  "pending_orders": [],
   "last_entry_times": {
     "NDXUSD#_OB-Pro": "2026-11-04T07:10:30.078369+00:00",
     "EURJPY#_SMR": "2026-11-04T07:25:31.320955+00:00"
