@@ -15,9 +15,7 @@
       "tp3_hit": false,
       "created_at": "2026-11-04T13:40:37.275146+00:00",
       "entry_time": "2026-11-04T14:15:40.955008+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
     {
       "symbol": "EURJPY#",
       "model": "FVG-Direct",
@@ -31,8 +29,11 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-04T15:20:39.140720+00:00"
-    },
+      "created_at": "2026-11-04T15:20:39.140720+00:00",
+      "entry_time": "2026-11-04T15:50:34.916787+00:00"
+    }
+  ],
+  "pending_orders": [
     {
       "symbol": "DJIUSD#",
       "model": "FVG-Direct",
@@ -54,7 +55,8 @@
     "EURJPY#_SMR": "2026-11-04T07:25:31.320955+00:00",
     "XAUUSD#_Mitigation": "2026-11-04T14:15:40.955008+00:00",
     "GBPJPY#_OB-Pro": "2026-11-04T14:15:40.955008+00:00",
-    "XAUUSD#_FVG-Direct": "2026-11-04T14:55:35.339353+00:00"
+    "XAUUSD#_FVG-Direct": "2026-11-04T14:55:35.339353+00:00",
+    "EURJPY#_FVG-Direct": "2026-11-04T15:50:34.916787+00:00"
   },
   "last_day": "2026-11-04"
 }
