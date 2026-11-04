@@ -15,22 +15,6 @@
       "tp3_hit": false,
       "created_at": "2026-11-04T07:00:45.719332+00:00",
       "entry_time": "2026-11-04T07:10:30.078369+00:00"
-    },
-    {
-      "symbol": "EURJPY#",
-      "model": "SMR",
-      "direction": "SELL",
-      "entry": 177.526,
-      "sl": 177.709,
-      "tp1": 177.326,
-      "tp2": 177.226,
-      "tp3": 177.126,
-      "risk_pts": 18.318118652391036,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-04T07:10:30.078369+00:00",
-      "entry_time": "2026-11-04T07:25:31.320955+00:00"
     }
   ],
   "pending_orders": [
