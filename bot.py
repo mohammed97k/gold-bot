@@ -8,10 +8,8 @@ import traceback
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-# استدعاء الإعدادات من الملف الجديد
 from config import INSTRUMENTS, COOLDOWN_BARS, MAX_BARS_TRADE, EXPIRY_MINUTES, SERVER_OFFSET_HOURS
 
-# ==================== الإعدادات والمفاتيح ====================
 TICKERALL_API_KEY = os.environ.get("TICKERALL_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -55,7 +53,7 @@ def send_sticker(sticker_id):
 def send_pending_msg(trade, current_price):
     direction_icon = "🟢 <b>BUY LIMIT</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL LIMIT</b>"
     msg = (
-        f"⏳ <b>أمر معلق (Limit Order)!</b> ⏳\n\n"
+        f"⏳ <b>إشارة مبدئية (أمر معلق)</b> ⏳\n\n"
         f"💎 <b>الزوج:</b> {trade['symbol']}\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
@@ -66,7 +64,7 @@ def send_pending_msg(trade, current_price):
         f"🎯🎯 <b>الهدف الثاني:</b> <code>{trade['tp2']}</code>\n"
         f"🎯🎯🎯 <b>الهدف الثالث:</b> <code>{trade['tp3']}</code>\n\n"
         f"⏰ <b>الوقت:</b> {fmt_mosul_12h(datetime.now(ZoneInfo('UTC')))}\n"
-        f"⚠️ <i>سيتم إلغاء الأمر إذا لم يتفعل خلال ساعة واحدة.</i>"
+        f"⚠️ <i>سيتم إلغاء الأمر إذا لم يتفعل خلال 60 دقيقة.</i>"
     )
     send_telegram_raw(msg)
     send_sticker(STICKER_NEW_TRADE)
@@ -74,7 +72,7 @@ def send_pending_msg(trade, current_price):
 def send_filled_msg(trade):
     direction_icon = "🟢 <b>BUY</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL</b>"
     msg = (
-        f"✅ <b>تم تفعيل الصفقة!</b> ✅\n\n"
+        f"✅ <b>تم تفعيل الصفقة (Market)!</b> ✅\n\n"
         f"💎 <b>الزوج:</b> {trade['symbol']}\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
@@ -101,7 +99,7 @@ def send_cancelled_msg(trade):
 def send_new_trade_msg(trade):
     direction_icon = "🟢 <b>BUY</b>" if trade["direction"] == "BUY" else "🔴 <b>SELL</b>"
     msg = (
-        f"🚀 <b>صفقة جديدة (Market)!</b> 🚀\n\n"
+        f"🚀 <b>صفقة فورية (Market)!</b> 🚀\n\n"
         f"💎 <b>الزوج:</b> {trade['symbol']}\n"
         f"📊 <b>النموذج:</b> {trade['model']}\n"
         f"📈 <b>الاتجاه:</b> {direction_icon}\n"
@@ -174,7 +172,6 @@ def fetch_candles(account_id, symbol, timeframe, limit=500, hours=500, divisor=1
         df["datetime"] = pd.to_datetime(df["timestamp"], unit="s", utc=True) - pd.Timedelta(hours=SERVER_OFFSET_HOURS)
         df = df[["datetime", "open", "high", "low", "close"]].copy()
         for c in ["open", "high", "low", "close"]:
-            # هنا نقسم السعر على القاسم لتصحيحه
             df[c] = pd.to_numeric(df[c]) / divisor
         return df.sort_values("datetime").reset_index(drop=True)
     except Exception as e:
@@ -208,18 +205,25 @@ def session_flags(dt):
     t = dt.hour * 60 + dt.minute
     def tm(h1, m1, h2, m2): return (h1*60+m1) <= t < (h2*60+m2)
     return {
-        "LondonO": tm(2, 0, 3, 0), "SB-LDN": tm(3, 0, 4, 0), "Judas": tm(9, 30, 10, 0),
-        "SB-AM": tm(10, 0, 11, 0), "2022-AM": tm(11, 0, 11, 30), "Lunch": tm(11, 50, 12, 10),
-        "SB-PM": tm(14, 0, 15, 0), "MOC": tm(15, 15, 15, 45), "FOMC": tm(14, 0, 14, 30),
-        "NFP": tm(8, 30, 9, 0), "TGIF": dt.weekday() == 4 and tm(14, 0, 15, 0)
+        "Judas": tm(9, 30, 10, 0),
+        "SBAM": tm(10, 0, 11, 0),
+        "SBPM": tm(14, 0, 15, 0),
+        "AMKZ": tm(9, 30, 11, 30),
+        "PMKZ": tm(13, 30, 16, 0),
+        "FOMC": tm(14, 0, 14, 30),
+        "MorningMacro": tm(9, 50, 10, 10),
+        "Early": tm(7, 0, 9, 0),
+        "anyKZ": tm(9, 30, 11, 30) or tm(13, 30, 16, 0) or tm(10, 0, 11, 0) or tm(14, 0, 15, 0)
     }
 
-# ==================== المنطق الأساسي ====================
-def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg):
+# ==================== المنطق الأساسي (المطابق للـ Pine Script v6) ====================
+def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg, symbol):
     n = len(df_m30)
     if n < 50: return []
     
     atr = ta_atr(df_m30, 14).values
+    atr_sma20 = pd.Series(atr).rolling(20).mean().values
+    
     sh = ta_pivothigh(df_m30["high"].values, 3, 3)
     sl = ta_pivotlow(df_m30["low"].values, 3, 3)
     
@@ -232,13 +236,20 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg):
 
     recent_low = df_m30["low"].rolling(20).min().shift(1).values
     recent_high = df_m30["high"].rolling(20).max().shift(1).values
+    
+    low50 = df_m30["low"].rolling(50).min().shift(1).values
+    high50 = df_m30["high"].rolling(50).max().shift(1).values
+    low60 = df_m30["low"].rolling(60).min().shift(1).values
+    high60 = df_m30["high"].rolling(60).max().shift(1).values
+
     bull_sweep = (df_m30["low"].values < recent_low) & (df_m30["close"].values > recent_low)
     bear_sweep = (df_m30["high"].values > recent_high) & (df_m30["close"].values < recent_high)
     
     o = df_m30["open"].values; h = df_m30["high"].values; l = df_m30["low"].values; c = df_m30["close"].values
+    bBody = np.abs(c - o)
+    bullDisp = (c > o) & (bBody > atr * 0.5)
+    bearDisp = (c < o) & (bBody > atr * 0.5)
     
-    bSweepOK = np.zeros(n, dtype=bool); sSweepOK = np.zeros(n, dtype=bool)
-    bSweepLow = np.full(n, np.nan); sSweepHigh = np.full(n, np.nan)
     bFVG = np.zeros(n, dtype=bool); sFVG = np.zeros(n, dtype=bool)
     bTop = np.full(n, np.nan); bBot = np.full(n, np.nan)
     sTop = np.full(n, np.nan); sBot = np.full(n, np.nan)
@@ -250,141 +261,209 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg):
     sMitH = np.full(n, np.nan); sMitL = np.full(n, np.nan); sMitCE = np.full(n, np.nan)
     bull_mss = np.zeros(n, dtype=bool); bear_mss = np.zeros(n, dtype=bool)
     
-    cbS = False; cbSBar = -1; cbSL = np.nan
-    csS = False; csSBar = -1; csSH = np.nan
-    cbM = False; cbMBar = -1; csM = False; csMBar = -1
     cbF = False; cbFBar = -1; cbT = np.nan; cbB = np.nan
     csF = False; csFBar = -1; csT = np.nan; csB = np.nan
     cbO = False; cbOBar = -1; cbOH = np.nan; cbOL = np.nan; cbOMT = np.nan
     csO = False; csOBar = -1; csOH = np.nan; csOL = np.nan; csOMT = np.nan
     cbM_ = False; cbMBar_ = -1; cbMH = np.nan; cbML = np.nan
     csM_ = False; csMBar_ = -1; csMH = np.nan; csML = np.nan
+    cbMSS = False; cbMSSBar = -1; csMSS = False; csMSSBar = -1
 
     for i in range(2, n):
-        if bull_sweep[i]: cbS = True; cbSBar = i; cbSL = l[i]
-        if bear_sweep[i]: csS = True; csSBar = i; csSH = h[i]
-        if cbS and (i - cbSBar) > 20: cbS = False
-        if csS and (i - csSBar) > 20: csS = False
-        bSweepOK[i] = cbS; bSweepLow[i] = cbSL
-        sSweepOK[i] = csS; sSweepHigh[i] = csSH
-        
-        if not np.isnan(last_sh[i]) and c[i] > last_sh[i] and c[i-1] <= last_sh[i] and bSweepOK[i]: cbM = True; cbMBar = i
-        if not np.isnan(last_sl[i]) and c[i] < last_sl[i] and c[i-1] >= last_sl[i] and sSweepOK[i]: csM = True; csMBar = i
-        if cbM and (i - cbMBar) > 15: cbM = False
-        if csM and (i - csMBar) > 15: csM = False
-        bull_mss[i] = cbM; bear_mss[i] = csM
-        
+        if not np.isnan(last_sh[i]) and c[i] > last_sh[i] and c[i-1] <= last_sh[i]: cbMSS = True; cbMSSBar = i
+        if not np.isnan(last_sl[i]) and c[i] < last_sl[i] and c[i-1] >= last_sl[i]: csMSS = True; csMSSBar = i
+        if cbMSS and (i - cbMSSBar) > 15: cbMSS = False
+        if csMSS and (i - csMSSBar) > 15: csMSS = False
+        bull_mss[i] = cbMSS; bear_mss[i] = csMSS
+
         if l[i] > h[i-2]: cbF = True; cbFBar = i; cbT = l[i]; cbB = h[i-2]
         if h[i] < l[i-2]: csF = True; csFBar = i; csT = l[i-2]; csB = h[i]
-        if cbF and (i - cbFBar) > 15: cbF = False
-        if csF and (i - csFBar) > 15: csF = False
+        if cbF and (i - cbFBar) > 10: cbF = False
+        if csF and (i - csFBar) > 10: csF = False
         bFVG[i] = cbF; bTop[i] = cbT; bBot[i] = cbB
         sFVG[i] = csF; sTop[i] = csT; sBot[i] = csB
         
         if c[i] > o[i] and c[i-1] < o[i-1]: cbO = True; cbOBar = i-1; cbOH = h[i-1]; cbOL = l[i-1]; cbOMT = (o[i-1]+c[i-1])/2.0
         if c[i] < o[i] and c[i-1] > o[i-1]: csO = True; csOBar = i-1; csOH = h[i-1]; csOL = l[i-1]; csOMT = (o[i-1]+c[i-1])/2.0
-        if cbO and (i - cbOBar) > 15: cbO = False
-        if csO and (i - csOBar) > 15: csO = False
+        if cbO and (i - cbOBar) > 10: cbO = False
+        if csO and (i - csOBar) > 10: csO = False
         bOB[i] = cbO; bOBH[i] = cbOH; bOBL[i] = cbOL; bOBMT[i] = cbOMT
         sOB[i] = csO; sOBH[i] = csOH; sOBL[i] = csOL; sOBMT[i] = csOMT
 
         if c[i] > o[i] and c[i-1] < o[i-1] and c[i] > h[i-2]: cbM_ = True; cbMBar_ = i-1; cbMH = h[i-1]; cbML = l[i-1]
         if c[i] < o[i] and c[i-1] > o[i-1] and c[i] < l[i-2]: csM_ = True; csMBar_ = i-1; csMH = h[i-1]; csML = l[i-1]
-        if cbM_ and (i - cbMBar_) > 15: cbM_ = False
-        if csM_ and (i - csMBar_) > 15: csM_ = False
+        if cbM_ and (i - cbMBar_) > 10: cbM_ = False
+        if csM_ and (i - csMBar_) > 10: csM_ = False
         bMit[i] = cbM_; bMitH[i] = cbMH; bMitL[i] = cbML; bMitCE[i] = (cbMH + cbML)/2
         sMit[i] = csM_; sMitH[i] = csMH; sMitL[i] = csML; sMitCE[i] = (csMH + csML)/2
 
     df_h1["ema200"] = ta_ema(df_h1["close"], 200)
-    df_h1["ema50"] = ta_ema(df_h1["close"], 50)
     h1 = df_h1.iloc[-2]
     trendUp = h1["close"] > h1["ema200"] if not pd.isna(h1["ema200"]) else False
     trendDown = h1["close"] < h1["ema200"] if not pd.isna(h1["ema200"]) else False
-    strongBull = trendUp and not pd.isna(h1["ema50"]) and h1["close"] > h1["ema50"]
-    strongBear = trendDown and not pd.isna(h1["ema50"]) and h1["close"] < h1["ema50"]
 
     sessions = session_flags(now_ny)
-    anyKZ = any([sessions[k] for k in ["LondonO","SB-LDN","Judas","SB-AM","2022-AM","Lunch","SB-PM","MOC","FOMC","NFP","TGIF"]])
-    t_min = now_ny.hour * 60 + now_ny.minute
-    inLunchBl = 12*60+10 <= t_min < 13*60+59
-    sessKZ = anyKZ and not inLunchBl
-    inAMKZ = sessions["SB-AM"] or sessions["Judas"]
+    anyKZ = sessions["anyKZ"]
     
     i = n - 1
     a14 = atr[i]
-    swingEq = (last_sh[i] + last_sl[i]) / 2.0 if not (np.isnan(last_sh[i]) or np.isnan(last_sl[i])) else np.nan
-    current_price = c[i]
+    a14_sma20 = atr_sma20[i] if not np.isnan(atr_sma20[i]) else a14
 
     signals = []
-    
-    # 1. IOFED
-    if sessKZ and (bull_mss[i] or bSweepOK[i]) and bOB[i] and c[i] > o[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and trendUp and (c[i]-o[i]) > a14*0.4 and c[i] >= bOBMT[i]:
-        signals.append({"model": "IOFED", "dir": "BUY", "entry": bOBMT[i], "sl": bOBL[i]-a14*0.3})
-    if sessKZ and (bear_mss[i] or sSweepOK[i]) and sOB[i] and c[i] < o[i] and not np.isnan(swingEq) and sOBMT[i] > swingEq and trendDown and (o[i]-c[i]) > a14*0.4 and c[i] <= sOBMT[i]:
-        signals.append({"model": "IOFED", "dir": "SELL", "entry": sOBMT[i], "sl": sOBH[i]+a14*0.3})
+    def add_sig(model, dir, entry, sl):
+        # فلتر الباك تيست: لا نضيف الإشارة إلا إذا كانت موجودة في القائمة المسموحة للزوج
+        if model in cfg.get("allowed_models", []):
+            signals.append({"model": model, "dir": dir, "entry": entry, "sl": sl})
 
-    # 2. FVG-Direct
-    bFage = i - np.where(bFVG)[0][-1] if bFVG.any() else 999
-    sFage = i - np.where(sFVG)[0][-1] if sFVG.any() else 999
-    if sessKZ and strongBull and bFVG[i] and bFage <= 5 and c[i] > (bTop[i]+bBot[i])/2 and c[i] > bBot[i] and abs(c[i]-o[i]) > a14*0.3 and c[i] >= (bTop[i]+bBot[i])/2:
-        signals.append({"model": "FVG-Direct", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bBot[i]-a14*0.3})
-    if sessKZ and strongBear and sFVG[i] and sFage <= 5 and c[i] < (sTop[i]+sBot[i])/2 and c[i] < sTop[i] and abs(c[i]-o[i]) > a14*0.3 and c[i] <= (sTop[i]+sBot[i])/2:
-        signals.append({"model": "FVG-Direct", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
+    # ═══════════ نماذج الذهب GOLD ═══════════
+    if cfg["name"] == "GOLD":
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and a14 > a14_sma20 and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M53: Risk Gov", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and trendDown and a14 > a14_sma20 and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M53: Risk Gov", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and bFVG[i] and c[i] > bTop[i]: add_sig("M76: Disrespect BISI", "BUY", bTop[i], bBot[i]-a14*0.3)
+        if anyKZ and trendDown and sFVG[i] and c[i] < sBot[i]: add_sig("M76: Disrespect BISI", "SELL", sBot[i], sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and l[i-1] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M26: Ma Deuce", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and h[i-1] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M26: Ma Deuce", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and bOB[i] and bullDisp[i] and l[i] <= bOBMT[i] and c[i] > bOBMT[i]: add_sig("M6: Propulsion", "BUY", bOBMT[i], bOBL[i]-a14*0.3)
+        if anyKZ and trendDown and sOB[i] and bearDisp[i] and h[i] >= sOBMT[i] and c[i] < sOBMT[i]: add_sig("M6: Propulsion", "SELL", sOBMT[i], sOBH[i]+a14*0.3)
 
-    # 3. OB-Pro
-    if sessKZ and strongBull and bOB[i] and (i - cbOBar) <= 10 and bull_mss[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and c[i] > o[i] and c[i] >= bOBMT[i]:
-        signals.append({"model": "OB-Pro", "dir": "BUY", "entry": bOBMT[i], "sl": bOBL[i]-a14*0.3})
-    if sessKZ and strongBear and sOB[i] and (i - csOBar) <= 10 and bear_mss[i] and not np.isnan(swingEq) and sOBMT[i] > swingEq and c[i] < o[i] and c[i] <= sOBMT[i]:
-        signals.append({"model": "OB-Pro", "dir": "SELL", "entry": sOBMT[i], "sl": sOBH[i]+a14*0.3})
+        if sessions["MorningMacro"] and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M64: Morning Macro", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["MorningMacro"] and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M64: Morning Macro", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and bear_sweep[i] and (h[i]-c[i]) > (c[i]-o[i])*2 and c[i] > o[i]: add_sig("M18: Rejection", "BUY", c[i], l[i]-a14*0.3)
+        if anyKZ and trendDown and bull_sweep[i] and (c[i]-l[i]) > (o[i]-c[i])*2 and c[i] < o[i]: add_sig("M18: Rejection", "SELL", c[i], h[i]+a14*0.3)
 
-    # 4. SMR
-    if sessKZ and sSweepOK[i] and bull_mss[i] and bFVG[i] and c[i] > (bTop[i]+bBot[i])/2 and (c[i]-o[i]) > a14*0.5 and c[i] >= (bTop[i]+bBot[i])/2:
-        signals.append({"model": "SMR", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bBot[i]-a14*0.3})
-    if sessKZ and bSweepOK[i] and bear_mss[i] and sFVG[i] and c[i] < (sTop[i]+sBot[i])/2 and (o[i]-c[i]) > a14*0.5 and c[i] <= (sTop[i]+sBot[i])/2:
-        signals.append({"model": "SMR", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
+        if anyKZ and trendUp and bOB[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M11: Unicorn", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and trendDown and sOB[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M11: Unicorn", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and bMit[i] and l[i] <= bMitCE[i] and c[i] > bMitCE[i]: add_sig("M17: Mitigation", "BUY", bMitCE[i], bMitL[i]-a14*0.3)
+        if anyKZ and trendDown and sMit[i] and h[i] >= sMitCE[i] and c[i] < sMitCE[i]: add_sig("M17: Mitigation", "SELL", sMitCE[i], sMitH[i]+a14*0.3)
+        
+        if sessions["AMKZ"] and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M45: 10-Min Rule", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["AMKZ"] and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M45: 10-Min Rule", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
 
-    # 5. Mitigation
-    if sessKZ and strongBull and bMit[i] and (i - cbMBar_) <= 8 and c[i] > o[i] and c[i] > bMitCE[i] and (c[i]-o[i]) > a14*0.4 and c[i] >= bMitCE[i]:
-        signals.append({"model": "Mitigation", "dir": "BUY", "entry": bMitCE[i], "sl": bMitL[i]-a14*0.3})
-    if sessKZ and strongBear and sMit[i] and (i - csMBar_) <= 8 and c[i] < o[i] and c[i] < sMitCE[i] and (o[i]-c[i]) > a14*0.4 and c[i] <= sMitCE[i]:
-        signals.append({"model": "Mitigation", "dir": "SELL", "entry": sMitCE[i], "sl": sMitH[i]+a14*0.3})
+        if (sessions["SBAM"] or sessions["SBPM"]) and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M54: Algo Clock", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if (sessions["SBAM"] or sessions["SBPM"]) and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M54: Algo Clock", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
 
-    # 6. MMBM
-    if inAMKZ and bSweepOK[i] and bull_mss[i] and bOB[i] and not np.isnan(swingEq) and bOBMT[i] < swingEq and trendUp and c[i] >= bOBMT[i]:
-        signals.append({"model": "MMBM", "dir": "BUY", "entry": bOBMT[i], "sl": bOBL[i]-a14*0.3})
+        if anyKZ and trendUp and bull_mss[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M50: Key Turn Pt", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and trendDown and bear_mss[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M50: Key Turn Pt", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and bFVG[i] and bOB[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2 and bull_mss[i]: add_sig("M106: BPR Bolo", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and trendDown and sFVG[i] and sOB[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2 and bear_mss[i]: add_sig("M106: BPR Bolo", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
 
-    # 7. 2022
-    if sessions["SB-AM"] and bSweepOK[i] and bull_mss[i] and bFVG[i] and trendUp and c[i] >= (bTop[i]+bBot[i])/2:
-        signals.append({"model": "2022", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bBot[i]-a14*0.3})
-    if sessions["SB-AM"] and sSweepOK[i] and bear_mss[i] and sFVG[i] and trendDown and c[i] <= (sTop[i]+sBot[i])/2:
-        signals.append({"model": "2022", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
+    # ═══════════ نماذج الناسداك NAS100 ═══════════
+    elif cfg["name"] == "NAS100":
+        if anyKZ and trendUp and bull_sweep[i] and bull_mss[i] and bullDisp[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M1: ICT 2022", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and trendDown and bear_sweep[i] and bear_mss[i] and bearDisp[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M4: MMSM", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if sessions["FOMC"] and trendUp and bullDisp[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M13: FOMC 2-Stage", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["FOMC"] and trendDown and bearDisp[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M13: FOMC 2-Stage", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
 
-    # 8. Reaper
-    if sessKZ and strongBear and not np.isnan(swingEq) and c[i] > swingEq and sFVG[i] and c[i] < o[i] and c[i] <= (sTop[i]+sBot[i])/2:
-        signals.append({"model": "Reaper", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sTop[i]+a14*0.3})
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
 
-    # 9. SBPM-MSS
-    if sessions["SB-PM"] and bull_mss[i] and bFVG[i] and trendUp and c[i] >= (bTop[i]+bBot[i])/2:
-        signals.append({"model": "SBPM-MSS", "dir": "BUY", "entry": (bTop[i]+bBot[i])/2, "sl": bSweepLow[i]-a14*0.3})
-    if sessions["SB-PM"] and bear_mss[i] and sFVG[i] and trendDown and c[i] <= (sTop[i]+sBot[i])/2:
-        signals.append({"model": "SBPM-MSS", "dir": "SELL", "entry": (sTop[i]+sBot[i])/2, "sl": sSweepHigh[i]+a14*0.3})
+        if anyKZ and trendUp and bMit[i] and l[i] <= bMitCE[i] and c[i] > bMitCE[i]: add_sig("M17: Mitigation", "BUY", bMitCE[i], bMitL[i]-a14*0.3)
+        if anyKZ and trendDown and sMit[i] and h[i] >= sMitCE[i] and c[i] < sMitCE[i]: add_sig("M17: Mitigation", "SELL", sMitCE[i], sMitH[i]+a14*0.3)
 
-    # 10. Judas
-    if sessions["Judas"] and trendUp and bull_sweep[i] and c[i] > o[i]:
-        signals.append({"model": "Judas", "dir": "BUY", "entry": c[i], "sl": recent_low[i]-a14*0.3})
-    if sessions["Judas"] and trendDown and bear_sweep[i] and c[i] < o[i]:
-        signals.append({"model": "Judas", "dir": "SELL", "entry": c[i], "sl": recent_high[i]+a14*0.3})
+        if anyKZ and trendUp and l[i] < low50[i] and c[i] > o[i]: add_sig("M41: Old Highs", "BUY", c[i], low50[i]-a14*0.3)
+        if anyKZ and trendDown and h[i] > high50[i] and c[i] < o[i]: add_sig("M41: Old Highs", "SELL", c[i], high50[i]+a14*0.3)
 
-    # 11. TGIF
-    if sessions["TGIF"] and trendDown and bull_sweep[i] and c[i] > o[i]:
-        signals.append({"model": "TGIF", "dir": "BUY", "entry": c[i], "sl": recent_low[i]-a14*0.3})
-    if sessions["TGIF"] and trendUp and bear_sweep[i] and c[i] < o[i]:
-        signals.append({"model": "TGIF", "dir": "SELL", "entry": c[i], "sl": recent_high[i]+a14*0.3})
+        if sessions["AMKZ"] and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M64: Morning Macro", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["AMKZ"] and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M64: Morning Macro", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
 
+        if anyKZ and trendUp and l[i] < low60[i] and c[i] > o[i]: add_sig("M92: Real Void", "BUY", c[i], low60[i]-a14*0.3)
+        if anyKZ and trendDown and h[i] > high60[i] and c[i] < o[i]: add_sig("M92: Real Void", "SELL", c[i], high60[i]+a14*0.3)
+
+        if anyKZ and trendUp and bBody[i] > a14*1.5 and c[i] > o[i]: add_sig("M102: Full Replic", "BUY", c[i], l[i]-a14*0.3)
+        if anyKZ and trendDown and bBody[i] > a14*1.5 and c[i] < o[i]: add_sig("M102: Full Replic", "SELL", c[i], h[i]+a14*0.3)
+
+    # ═══════════ نماذج الداو جونز US30 ═══════════
+    elif cfg["name"] == "US30":
+        if anyKZ and trendUp and bOB[i] and bullDisp[i] and l[i] <= bOBMT[i] and c[i] > bOBMT[i]: add_sig("M6: Propulsion", "BUY", bOBMT[i], bOBL[i]-a14*0.3)
+        if anyKZ and trendDown and sOB[i] and bearDisp[i] and h[i] >= sOBMT[i] and c[i] < sOBMT[i]: add_sig("M6: Propulsion", "SELL", sOBMT[i], sOBH[i]+a14*0.3)
+
+        if anyKZ and trendUp and bOB[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M11: Unicorn", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and trendDown and sOB[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M11: Unicorn", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+        if anyKZ and trendUp and bMit[i] and l[i] <= bMitCE[i] and c[i] > bMitCE[i]: add_sig("M17: Mitigation", "BUY", bMitCE[i], bMitL[i]-a14*0.3)
+        if anyKZ and trendDown and sMit[i] and h[i] >= sMitCE[i] and c[i] < sMitCE[i]: add_sig("M17: Mitigation", "SELL", sMitCE[i], sMitH[i]+a14*0.3)
+
+        if sessions["AMKZ"] and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M45: 10-Min Rule", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["AMKZ"] and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M45: 10-Min Rule", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+        if sessions["MorningMacro"] and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M64: Morning Macro", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["MorningMacro"] and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M64: Morning Macro", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+        if sessions["Early"] and trendUp and bull_sweep[i] and bullDisp[i]: add_sig("M104: Early Focus", "BUY", c[i], l[i]-a14*0.3)
+        if sessions["Early"] and trendDown and bear_sweep[i] and bearDisp[i]: add_sig("M104: Early Focus", "SELL", c[i], h[i]+a14*0.3)
+
+    # ═══════════ نماذج الباوند ين GBPJPY ═══════════
+    elif cfg["name"] == "GBPJPY":
+        if anyKZ and trendUp and bOB[i] and bullDisp[i] and l[i] <= bOBMT[i] and c[i] > bOBMT[i]: add_sig("M6: Propulsion", "BUY", bOBMT[i], bOBL[i]-a14*0.3)
+        if anyKZ and trendDown and sOB[i] and bearDisp[i] and h[i] >= sOBMT[i] and c[i] < sOBMT[i]: add_sig("M6: Propulsion", "SELL", sOBMT[i], sOBH[i]+a14*0.3)
+
+        if sessions["Judas"] and trendUp and bull_sweep[i] and c[i] > o[i]: add_sig("M10: Judas Swing", "BUY", c[i], recent_low[i]-a14*0.3)
+        if sessions["Judas"] and trendDown and bear_sweep[i] and c[i] < o[i]: add_sig("M10: Judas Swing", "SELL", c[i], recent_high[i]+a14*0.3)
+
+        if sessions["FOMC"] and trendUp and bullDisp[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M13: FOMC 2-Stage", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["FOMC"] and trendDown and bearDisp[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M13: FOMC 2-Stage", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+        if sessions["AMKZ"] and trendUp and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M45: 10-Min Rule", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["AMKZ"] and trendDown and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M45: 10-Min Rule", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+    # ═══════════ نماذج اليورو دولار EURUSD ═══════════
+    elif cfg["name"] == "EURUSD":
+        if (sessions["SBAM"] or sessions["SBPM"]) and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M2: Silver Bullet", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if (sessions["SBAM"] or sessions["SBPM"]) and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M2: Silver Bullet", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+    # ═══════════ نماذج الدولار فرنك USDCHF ═══════════
+    elif cfg["name"] == "USDCHF":
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        if anyKZ and trendUp and (h[i]-l[i]) < a14*0.5 and bull_sweep[i]: add_sig("M31: Seek/Destroy", "BUY", c[i], recent_low[i]-a14*0.3)
+        if anyKZ and trendDown and (h[i]-l[i]) < a14*0.5 and bear_sweep[i]: add_sig("M31: Seek/Destroy", "SELL", c[i], recent_high[i]+a14*0.3)
+
+    # ═══════════ نماذج الباوند دولار GBPUSD ═══════════
+    elif cfg["name"] == "GBPUSD":
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        isQShift = now_ny.day <= 5
+        if isQShift and anyKZ and trendUp and bull_sweep[i] and bullDisp[i]: add_sig("M42: Q-Shift", "BUY", c[i], recent_low[i]-a14*0.3)
+        if isQShift and anyKZ and trendDown and bear_sweep[i] and bearDisp[i]: add_sig("M42: Q-Shift", "SELL", c[i], recent_high[i]+a14*0.3)
+
+    # ═══════════ نماذج اليورو ين EURJPY ═══════════
+    elif cfg["name"] == "EURJPY":
+        if anyKZ and bFVG[i] and c[i] > bTop[i]: add_sig("M16: Immed Rebal", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if anyKZ and sFVG[i] and c[i] < sBot[i]: add_sig("M16: Immed Rebal", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+        
+        if anyKZ and trendUp and c[i] > o[i] and bBody[i] > a14: add_sig("M43: Anti-Revenge", "BUY", c[i], l[i]-a14*0.3)
+        if anyKZ and trendDown and c[i] < o[i] and bBody[i] > a14: add_sig("M43: Anti-Revenge", "SELL", c[i], h[i]+a14*0.3)
+
+        if sessions["FOMC"] and trendUp and bullDisp[i] and bFVG[i] and l[i] <= (bTop[i]+bBot[i])/2 and c[i] > (bTop[i]+bBot[i])/2: add_sig("M13: FOMC 2-Stage", "BUY", (bTop[i]+bBot[i])/2, bBot[i]-a14*0.3)
+        if sessions["FOMC"] and trendDown and bearDisp[i] and sFVG[i] and h[i] >= (sTop[i]+sBot[i])/2 and c[i] < (sTop[i]+sBot[i])/2: add_sig("M13: FOMC 2-Stage", "SELL", (sTop[i]+sBot[i])/2, sTop[i]+a14*0.3)
+
+        if anyKZ and trendUp and bull_sweep[i] and bullDisp[i]: add_sig("M32: Sympathy", "BUY", c[i], recent_low[i]-a14*0.3)
+        if anyKZ and trendDown and bear_sweep[i] and bearDisp[i]: add_sig("M32: Sympathy", "SELL", c[i], recent_high[i]+a14*0.3)
+
+    # تصفية الإشارات وحساب الأهداف
     valid_signals = []
     for sig in signals:
         mult = cfg["mult"]
-        digits = cfg["digits"] # استخدام الخانات العشرية الصحيحة
+        digits = cfg["digits"]
         risk = abs(sig["entry"] - sig["sl"]) * mult
         
         if cfg["min_sl"] <= risk <= cfg["max_sl"]:
@@ -444,7 +523,7 @@ def manage_active_trades(state, symbol, current_price, now_utc):
 
 # ==================== المحرك الرئيسي ====================
 def main():
-    print("Starting Multi-Asset Elite Bot (v29)...", flush=True)
+    print("Starting ICT Ultimate Multi-Symbol Bot (v6)...", flush=True)
     state = {"active_trades": [], "pending_orders": [], "last_day": "", "last_entry_times": {}}
     if os.path.exists(STATE_FILE):
         try:
@@ -475,7 +554,6 @@ def main():
     for symbol, cfg in INSTRUMENTS.items():
         print(f"\n--- Checking {symbol} ---", flush=True)
         
-        # قراءة قاسم السعر
         div = cfg.get("divisor", 1.0)
         df_m30 = fetch_candles(account_id, symbol, "M30", 500, 500, divisor=div)
         df_h1 = fetch_candles(account_id, symbol, "H1", 500, 500, divisor=div)
@@ -516,15 +594,12 @@ def main():
                 send_filled_msg(order)
 
         # 3. فحص إشارات جديدة
-        signals = check_all_models(df_m30, df_h1, now_utc, now_ny, cfg)
+        signals = check_all_models(df_m30, df_h1, now_utc, now_ny, cfg, symbol)
         print(f"Signals found: {len(signals)}", flush=True)
         
         for sig in signals:
             model_name = sig["model"]
             
-            if model_name not in cfg["allowed_models"]:
-                continue
-
             last_entry = state.get("last_entry_times", {}).get(f"{symbol}_{model_name}")
             if last_entry:
                 last_dt = datetime.fromisoformat(last_entry)
@@ -550,12 +625,10 @@ def main():
             }
 
             is_market = False
-            if sig["dir"] == "BUY" and current_price <= sig["entry"]:
-                is_market = True
-            elif sig["dir"] == "SELL" and current_price >= sig["entry"]:
-                is_market = True
+            if sig["dir"] == "BUY" and current_price <= sig["entry"]: is_market = True
+            elif sig["dir"] == "SELL" and current_price >= sig["entry"]: is_market = True
 
-            if model_name in ["Judas", "TGIF"] or is_market:
+            if is_market:
                 trade_record["entry_time"] = now_utc.isoformat()
                 state["active_trades"].append(trade_record)
                 state["last_entry_times"][f"{symbol}_{model_name}"] = now_utc.isoformat()
