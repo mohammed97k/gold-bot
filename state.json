@@ -1,13 +1,6 @@
 {
   "active_trades": [],
   "pending_orders": [],
-  "last_entry_times": {
-    "NDXUSD#_OB-Pro": "2026-11-04T07:10:30.078369+00:00",
-    "EURJPY#_SMR": "2026-11-04T07:25:31.320955+00:00",
-    "XAUUSD#_Mitigation": "2026-11-04T14:15:40.955008+00:00",
-    "GBPJPY#_OB-Pro": "2026-11-04T14:15:40.955008+00:00",
-    "XAUUSD#_FVG-Direct": "2026-11-04T14:55:35.339353+00:00",
-    "EURJPY#_FVG-Direct": "2026-11-04T15:50:34.916787+00:00"
-  },
-  "last_day": "2026-11-04"
+  "last_entry_times": {},
+  "last_day": "2026-11-05"
 }
