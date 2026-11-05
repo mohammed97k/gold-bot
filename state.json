@@ -1,5 +1,22 @@
 {
-  "active_trades": [],
+  "active_trades": [
+    {
+      "symbol": "NDXUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 26881.35,
+      "sl": 26943.77,
+      "tp1": 26781.35,
+      "tp2": 26681.35,
+      "tp3": 26581.35,
+      "risk_pts": 62.422842273299466,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-05T19:20:36.413934+00:00",
+      "entry_time": "2026-11-05T19:45:33.998129+00:00"
+    }
+  ],
   "pending_orders": [
     {
       "symbol": "GBPUSD#",
@@ -32,21 +49,6 @@
       "created_at": "2026-11-05T19:15:38.155441+00:00"
     },
     {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 26881.35,
-      "sl": 26943.77,
-      "tp1": 26781.35,
-      "tp2": 26681.35,
-      "tp3": 26581.35,
-      "risk_pts": 62.422842273299466,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-05T19:20:36.413934+00:00"
-    },
-    {
       "symbol": "USDCHF#",
       "model": "M16: Immed Rebal",
       "direction": "SELL",
@@ -64,7 +66,8 @@
   ],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-05T14:35:38.741314+00:00",
-    "XAUUSD#_M16: Immed Rebal": "2026-11-05T16:20:43.675613+00:00"
+    "XAUUSD#_M16: Immed Rebal": "2026-11-05T16:20:43.675613+00:00",
+    "NDXUSD#_M16: Immed Rebal": "2026-11-05T19:45:33.998129+00:00"
   },
   "last_day": "2026-11-05"
 }
