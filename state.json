@@ -1,6 +1,5 @@
 {
-  "active_trades": [],
-  "pending_orders": [
+  "active_trades": [
     {
       "symbol": "GBPJPY#",
       "model": "M16: Immed Rebal",
@@ -14,9 +13,13 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-05T14:31:14.528300+00:00"
+      "created_at": "2026-11-05T14:31:14.528300+00:00",
+      "entry_time": "2026-11-05T14:35:38.741314+00:00"
     }
   ],
-  "last_entry_times": {},
+  "pending_orders": [],
+  "last_entry_times": {
+    "GBPJPY#_M16: Immed Rebal": "2026-11-05T14:35:38.741314+00:00"
+  },
   "last_day": "2026-11-05"
 }
