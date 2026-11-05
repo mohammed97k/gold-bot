@@ -311,7 +311,6 @@ def check_all_models(df_m30, df_h1, now_utc, now_ny, cfg, symbol):
 
     signals = []
     def add_sig(model, dir, entry, sl):
-        # فلتر الباك تيست: لا نضيف الإشارة إلا إذا كانت موجودة في القائمة المسموحة للزوج
         if model in cfg.get("allowed_models", []):
             signals.append({"model": model, "dir": dir, "entry": entry, "sl": sl})
 
@@ -562,7 +561,8 @@ def main():
             print(f"Failed to fetch data for {symbol}", flush=True)
             continue
 
-        current_price = float(df_m30.iloc[-1]["close"])
+        # 👈 تم إضافة التدوير هنا لمنع الكسور الطويلة
+        current_price = round(float(df_m30.iloc[-1]["close"]), cfg.get("digits", 2))
         print(f"Current Price: {current_price} | Time: {fmt_mosul_12h(now_utc)}", flush=True)
 
         # 1. إدارة الصفقات النشطة
