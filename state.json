@@ -1,21 +1,23 @@
 {
-  "active_trades": [],
-  "pending_orders": [
+  "active_trades": [
     {
-      "symbol": "GBPUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 1.34659,
-      "sl": 1.34748,
-      "tp1": 1.34459,
-      "tp2": 1.34359,
-      "tp3": 1.34259,
-      "risk_pts": 8.853012061420529,
+      "symbol": "XAUUSD#",
+      "model": "M76: Disrespect BISI",
+      "direction": "BUY",
+      "entry": 4112.66,
+      "sl": 4103.15,
+      "tp1": 4122.66,
+      "tp2": 4132.66,
+      "tp3": 4142.66,
+      "risk_pts": 95.09533777494653,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-05T19:00:44.975891+00:00"
-    },
+      "created_at": "2026-11-05T20:00:41.173455+00:00",
+      "entry_time": "2026-11-05T20:05:31.142634+00:00"
+    }
+  ],
+  "pending_orders": [
     {
       "symbol": "DJIUSD#",
       "model": "M16: Immed Rebal",
@@ -60,27 +62,13 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-05T19:50:36.108801+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M76: Disrespect BISI",
-      "direction": "BUY",
-      "entry": 4112.66,
-      "sl": 4103.15,
-      "tp1": 4122.66,
-      "tp2": 4132.66,
-      "tp3": 4142.66,
-      "risk_pts": 95.09533777494653,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-05T20:00:41.173455+00:00"
     }
   ],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-05T14:35:38.741314+00:00",
     "XAUUSD#_M16: Immed Rebal": "2026-11-05T16:20:43.675613+00:00",
-    "NDXUSD#_M16: Immed Rebal": "2026-11-05T19:45:33.998129+00:00"
+    "NDXUSD#_M16: Immed Rebal": "2026-11-05T19:45:33.998129+00:00",
+    "XAUUSD#_M76: Disrespect BISI": "2026-11-05T20:05:31.142634+00:00"
   },
   "last_day": "2026-11-05"
 }
