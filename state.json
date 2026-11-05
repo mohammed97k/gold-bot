@@ -30,6 +30,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-05T19:15:38.155441+00:00"
+    },
+    {
+      "symbol": "NDXUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 26881.35,
+      "sl": 26943.77,
+      "tp1": 26781.35,
+      "tp2": 26681.35,
+      "tp3": 26581.35,
+      "risk_pts": 62.422842273299466,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-05T19:20:36.413934+00:00"
     }
   ],
   "last_entry_times": {
