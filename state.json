@@ -2,37 +2,22 @@
   "active_trades": [
     {
       "symbol": "XAUUSD#",
-      "model": "M76: Disrespect BISI",
+      "model": "M17: Mitigation",
       "direction": "BUY",
-      "entry": 4112.66,
-      "sl": 4103.15,
-      "tp1": 4122.66,
-      "tp2": 4132.66,
-      "tp3": 4142.66,
-      "risk_pts": 95.09533777494653,
+      "entry": 4102.84,
+      "sl": 4093.5,
+      "tp1": 4112.84,
+      "tp2": 4122.84,
+      "tp3": 4132.84,
+      "risk_pts": 93.4374806320966,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-05T20:00:41.173455+00:00",
-      "entry_time": "2026-11-05T20:05:31.142634+00:00"
+      "created_at": "2026-11-05T20:15:34.476367+00:00",
+      "entry_time": "2026-11-05T20:30:43.860656+00:00"
     }
   ],
   "pending_orders": [
-    {
-      "symbol": "USDCHF#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 0.81697,
-      "sl": 0.81802,
-      "tp1": 0.81497,
-      "tp2": 0.81397,
-      "tp3": 0.81297,
-      "risk_pts": 10.462148532408566,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-05T19:25:31.418688+00:00"
-    },
     {
       "symbol": "DJIUSD#",
       "model": "M11: Unicorn",
@@ -47,28 +32,14 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-05T19:50:36.108801+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M17: Mitigation",
-      "direction": "BUY",
-      "entry": 4102.84,
-      "sl": 4093.5,
-      "tp1": 4112.84,
-      "tp2": 4122.84,
-      "tp3": 4132.84,
-      "risk_pts": 93.4374806320966,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-05T20:15:34.476367+00:00"
     }
   ],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-05T14:35:38.741314+00:00",
     "XAUUSD#_M16: Immed Rebal": "2026-11-05T16:20:43.675613+00:00",
     "NDXUSD#_M16: Immed Rebal": "2026-11-05T19:45:33.998129+00:00",
-    "XAUUSD#_M76: Disrespect BISI": "2026-11-05T20:05:31.142634+00:00"
+    "XAUUSD#_M76: Disrespect BISI": "2026-11-05T20:05:31.142634+00:00",
+    "XAUUSD#_M17: Mitigation": "2026-11-05T20:30:43.860656+00:00"
   },
   "last_day": "2026-11-05"
 }
