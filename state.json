@@ -33,7 +33,23 @@
       "entry_time": "2026-11-06T15:30:40.180904+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "M76: Disrespect BISI",
+      "direction": "BUY",
+      "entry": 4066.1,
+      "sl": 4058.97,
+      "tp1": 4076.1,
+      "tp2": 4086.1,
+      "tp3": 4096.1,
+      "risk_pts": 71.31650893903497,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T18:30:34.698596+00:00"
+    }
+  ],
   "last_entry_times": {
     "GBPUSD#_M16: Immed Rebal": "2026-11-06T14:35:30.880616+00:00",
     "GBPJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00",
