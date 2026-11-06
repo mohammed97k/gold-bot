@@ -1,6 +1,52 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "GBPJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 211.522,
+      "sl": 211.658,
+      "tp1": 211.322,
+      "tp2": 211.222,
+      "tp3": 211.122,
+      "risk_pts": 13.687822637271552,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T14:30:39.545256+00:00"
+    },
+    {
+      "symbol": "GBPUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 1.3352,
+      "sl": 1.33601,
+      "tp1": 1.3332,
+      "tp2": 1.3322,
+      "tp3": 1.3312,
+      "risk_pts": 8.130605717624473,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T14:30:39.545256+00:00"
+    },
+    {
+      "symbol": "EURJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 176.454,
+      "sl": 176.548,
+      "tp1": 176.254,
+      "tp2": 176.154,
+      "tp3": 176.054,
+      "risk_pts": 9.345008284094547,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T14:30:39.545256+00:00"
+    }
+  ],
   "last_entry_times": {},
   "last_day": "2026-11-06"
 }
