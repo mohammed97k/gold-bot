@@ -5,12 +5,12 @@
       "model": "M45: 10-Min Rule",
       "direction": "SELL",
       "entry": 211.735,
-      "sl": 211.892,
+      "sl": 211.735,
       "tp1": 211.535,
       "tp2": 211.435,
       "tp3": 211.335,
       "risk_pts": 15.746394065843106,
-      "tp1_hit": false,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-06T14:40:35.128921+00:00",
@@ -47,6 +47,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-06T14:45:38.472716+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 4052.54,
+      "sl": 4059.32,
+      "tp1": 4042.54,
+      "tp2": 4032.54,
+      "tp3": 4022.54,
+      "risk_pts": 67.79736455847342,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T15:00:47.125882+00:00"
     }
   ],
   "last_entry_times": {
