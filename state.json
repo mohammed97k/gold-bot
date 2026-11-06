@@ -49,23 +49,7 @@
       "entry_time": "2026-11-06T15:30:40.180904+00:00"
     }
   ],
-  "pending_orders": [
-    {
-      "symbol": "EURUSD#",
-      "model": "M2: Silver Bullet",
-      "direction": "SELL",
-      "entry": 1.1152,
-      "sl": 1.11617,
-      "tp1": 1.1132,
-      "tp2": 1.11221,
-      "tp3": 1.1112,
-      "risk_pts": 9.645726160085744,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-06T15:40:34.985401+00:00"
-    }
-  ],
+  "pending_orders": [],
   "last_entry_times": {
     "GBPUSD#_M16: Immed Rebal": "2026-11-06T14:35:30.880616+00:00",
     "GBPJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00",
