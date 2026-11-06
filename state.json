@@ -111,6 +111,22 @@
       "tp3_hit": false,
       "created_at": "2026-11-06T20:10:35.249360+00:00",
       "entry_time": "2026-11-06T20:15:31.926306+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M76: Disrespect BISI",
+      "direction": "BUY",
+      "entry": 4065.13,
+      "sl": 4059.19,
+      "tp1": 4075.13,
+      "tp2": 4085.13,
+      "tp3": 4095.13,
+      "risk_pts": 59.44432324572517,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T20:35:27.377210+00:00",
+      "entry_time": "2026-11-06T20:40:30.747078+00:00"
     }
   ],
   "pending_orders": [
@@ -128,21 +144,6 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-06T20:15:31.926306+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M76: Disrespect BISI",
-      "direction": "BUY",
-      "entry": 4065.13,
-      "sl": 4059.19,
-      "tp1": 4075.13,
-      "tp2": 4085.13,
-      "tp3": 4095.13,
-      "risk_pts": 59.44432324572517,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-06T20:35:27.377210+00:00"
     }
   ],
   "last_entry_times": {
@@ -159,7 +160,8 @@
     "XAUUSD#_M26: Ma Deuce": "2026-11-06T20:15:31.926306+00:00",
     "XAUUSD#_M11: Unicorn": "2026-11-06T20:15:31.926306+00:00",
     "XAUUSD#_M50: Key Turn Pt": "2026-11-06T20:15:31.926306+00:00",
-    "XAUUSD#_M106: BPR Bolo": "2026-11-06T20:15:31.926306+00:00"
+    "XAUUSD#_M106: BPR Bolo": "2026-11-06T20:15:31.926306+00:00",
+    "XAUUSD#_M76: Disrespect BISI": "2026-11-06T20:40:30.747078+00:00"
   },
   "last_day": "2026-11-06"
 }
