@@ -15,9 +15,23 @@
       "tp3_hit": false,
       "created_at": "2026-11-06T14:40:35.128921+00:00",
       "entry_time": "2026-11-06T14:45:38.472716+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 4052.54,
+      "sl": 4059.32,
+      "tp1": 4042.54,
+      "tp2": 4032.54,
+      "tp3": 4022.54,
+      "risk_pts": 67.79736455847342,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T15:00:47.125882+00:00",
+      "entry_time": "2026-11-06T15:10:28.484789+00:00"
+    },
     {
       "symbol": "EURUSD#",
       "model": "M16: Immed Rebal",
@@ -31,8 +45,11 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-06T14:35:30.880616+00:00"
-    },
+      "created_at": "2026-11-06T14:35:30.880616+00:00",
+      "entry_time": "2026-11-06T15:10:28.484789+00:00"
+    }
+  ],
+  "pending_orders": [
     {
       "symbol": "XAUUSD#",
       "model": "M6: Propulsion",
@@ -49,21 +66,6 @@
       "created_at": "2026-11-06T14:45:38.472716+00:00"
     },
     {
-      "symbol": "XAUUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 4052.54,
-      "sl": 4059.32,
-      "tp1": 4042.54,
-      "tp2": 4032.54,
-      "tp3": 4022.54,
-      "risk_pts": 67.79736455847342,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-06T15:00:47.125882+00:00"
-    },
-    {
       "symbol": "NDXUSD#",
       "model": "M16: Immed Rebal",
       "direction": "BUY",
@@ -77,13 +79,30 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-06T15:05:36.853454+00:00"
+    },
+    {
+      "symbol": "USDCHF#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 0.81966,
+      "sl": 0.81885,
+      "tp1": 0.82166,
+      "tp2": 0.82266,
+      "tp3": 0.82366,
+      "risk_pts": 8.114273280189765,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T15:10:28.484789+00:00"
     }
   ],
   "last_entry_times": {
     "GBPUSD#_M16: Immed Rebal": "2026-11-06T14:35:30.880616+00:00",
     "GBPJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00",
     "EURJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00",
-    "GBPJPY#_M45: 10-Min Rule": "2026-11-06T14:45:38.472716+00:00"
+    "GBPJPY#_M45: 10-Min Rule": "2026-11-06T14:45:38.472716+00:00",
+    "XAUUSD#_M16: Immed Rebal": "2026-11-06T15:10:28.484789+00:00",
+    "EURUSD#_M16: Immed Rebal": "2026-11-06T15:10:28.484789+00:00"
   },
   "last_day": "2026-11-06"
 }
