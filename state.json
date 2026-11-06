@@ -63,40 +63,9 @@
       "tp3_hit": false,
       "created_at": "2026-11-06T15:10:28.484789+00:00",
       "entry_time": "2026-11-06T15:30:40.180904+00:00"
-    },
-    {
-      "symbol": "NDXUSD#",
-      "model": "M17: Mitigation",
-      "direction": "SELL",
-      "entry": 27038.45,
-      "sl": 27140.77,
-      "tp1": 26938.45,
-      "tp2": 26838.45,
-      "tp3": 26738.45,
-      "risk_pts": 102.32456988737249,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-06T15:30:40.180904+00:00",
-      "entry_time": "2026-11-06T15:40:34.985401+00:00"
     }
   ],
   "pending_orders": [
-    {
-      "symbol": "XAUUSD#",
-      "model": "M6: Propulsion",
-      "direction": "BUY",
-      "entry": 4038.08,
-      "sl": 4026.61,
-      "tp1": 4048.08,
-      "tp2": 4058.08,
-      "tp3": 4068.08,
-      "risk_pts": 114.60842556846728,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-06T14:45:38.472716+00:00"
-    },
     {
       "symbol": "EURUSD#",
       "model": "M2: Silver Bullet",
