@@ -1,24 +1,6 @@
 {
   "active_trades": [
     {
-      "symbol": "GBPUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 1.3352,
-      "sl": 1.33601,
-      "tp1": 1.3332,
-      "tp2": 1.3322,
-      "tp3": 1.3312,
-      "risk_pts": 8.130605717624473,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-06T14:30:39.545256+00:00",
-      "entry_time": "2026-11-06T14:35:30.880616+00:00"
-    }
-  ],
-  "pending_orders": [
-    {
       "symbol": "GBPJPY#",
       "model": "M16: Immed Rebal",
       "direction": "SELL",
@@ -31,7 +13,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-06T14:30:39.545256+00:00"
+      "created_at": "2026-11-06T14:30:39.545256+00:00",
+      "entry_time": "2026-11-06T14:40:35.128921+00:00"
     },
     {
       "symbol": "EURJPY#",
@@ -46,8 +29,11 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-06T14:30:39.545256+00:00"
-    },
+      "created_at": "2026-11-06T14:30:39.545256+00:00",
+      "entry_time": "2026-11-06T14:40:35.128921+00:00"
+    }
+  ],
+  "pending_orders": [
     {
       "symbol": "EURUSD#",
       "model": "M16: Immed Rebal",
@@ -62,10 +48,27 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-06T14:35:30.880616+00:00"
+    },
+    {
+      "symbol": "GBPJPY#",
+      "model": "M45: 10-Min Rule",
+      "direction": "SELL",
+      "entry": 211.735,
+      "sl": 211.892,
+      "tp1": 211.535,
+      "tp2": 211.435,
+      "tp3": 211.335,
+      "risk_pts": 15.746394065843106,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T14:40:35.128921+00:00"
     }
   ],
   "last_entry_times": {
-    "GBPUSD#_M16: Immed Rebal": "2026-11-06T14:35:30.880616+00:00"
+    "GBPUSD#_M16: Immed Rebal": "2026-11-06T14:35:30.880616+00:00",
+    "GBPJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00",
+    "EURJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00"
   },
   "last_day": "2026-11-06"
 }
