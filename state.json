@@ -47,9 +47,7 @@
       "tp3_hit": false,
       "created_at": "2026-11-06T19:30:38.801342+00:00",
       "entry_time": "2026-11-06T20:10:35.249360+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
     {
       "symbol": "XAUUSD#",
       "model": "M26: Ma Deuce",
@@ -63,7 +61,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-06T20:10:35.249360+00:00"
+      "created_at": "2026-11-06T20:10:35.249360+00:00",
+      "entry_time": "2026-11-06T20:15:31.926306+00:00"
     },
     {
       "symbol": "XAUUSD#",
@@ -78,7 +77,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-06T20:10:35.249360+00:00"
+      "created_at": "2026-11-06T20:10:35.249360+00:00",
+      "entry_time": "2026-11-06T20:15:31.926306+00:00"
     },
     {
       "symbol": "XAUUSD#",
@@ -93,7 +93,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-06T20:10:35.249360+00:00"
+      "created_at": "2026-11-06T20:10:35.249360+00:00",
+      "entry_time": "2026-11-06T20:15:31.926306+00:00"
     },
     {
       "symbol": "XAUUSD#",
@@ -108,7 +109,25 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-06T20:10:35.249360+00:00"
+      "created_at": "2026-11-06T20:10:35.249360+00:00",
+      "entry_time": "2026-11-06T20:15:31.926306+00:00"
+    }
+  ],
+  "pending_orders": [
+    {
+      "symbol": "DJIUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 51429.3,
+      "sl": 51512.4,
+      "tp1": 51329.3,
+      "tp2": 51229.3,
+      "tp3": 51129.3,
+      "risk_pts": 83.09747001389042,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-06T20:15:31.926306+00:00"
     }
   ],
   "last_entry_times": {
@@ -121,7 +140,11 @@
     "NDXUSD#_M16: Immed Rebal": "2026-11-06T15:30:40.180904+00:00",
     "USDCHF#_M16: Immed Rebal": "2026-11-06T15:30:40.180904+00:00",
     "NDXUSD#_M17: Mitigation": "2026-11-06T15:40:34.985401+00:00",
-    "DJIUSD#_M16: Immed Rebal": "2026-11-06T20:10:35.249360+00:00"
+    "DJIUSD#_M16: Immed Rebal": "2026-11-06T20:10:35.249360+00:00",
+    "XAUUSD#_M26: Ma Deuce": "2026-11-06T20:15:31.926306+00:00",
+    "XAUUSD#_M11: Unicorn": "2026-11-06T20:15:31.926306+00:00",
+    "XAUUSD#_M50: Key Turn Pt": "2026-11-06T20:15:31.926306+00:00",
+    "XAUUSD#_M106: BPR Bolo": "2026-11-06T20:15:31.926306+00:00"
   },
   "last_day": "2026-11-06"
 }
