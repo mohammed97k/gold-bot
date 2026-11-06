@@ -49,22 +49,6 @@
       "entry_time": "2026-11-06T15:10:28.484789+00:00"
     },
     {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 27119.7,
-      "sl": 27060.98,
-      "tp1": 27219.7,
-      "tp2": 27319.7,
-      "tp3": 27419.7,
-      "risk_pts": 58.722668669917766,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-06T15:05:36.853454+00:00",
-      "entry_time": "2026-11-06T15:30:40.180904+00:00"
-    },
-    {
       "symbol": "USDCHF#",
       "model": "M16: Immed Rebal",
       "direction": "BUY",
