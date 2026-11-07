@@ -130,22 +130,6 @@
     }
   ],
   "pending_orders": [],
-  "last_entry_times": {
-    "GBPUSD#_M16: Immed Rebal": "2026-11-06T14:35:30.880616+00:00",
-    "GBPJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00",
-    "EURJPY#_M16: Immed Rebal": "2026-11-06T14:40:35.128921+00:00",
-    "GBPJPY#_M45: 10-Min Rule": "2026-11-06T14:45:38.472716+00:00",
-    "XAUUSD#_M16: Immed Rebal": "2026-11-06T15:10:28.484789+00:00",
-    "EURUSD#_M16: Immed Rebal": "2026-11-06T15:10:28.484789+00:00",
-    "NDXUSD#_M16: Immed Rebal": "2026-11-06T15:30:40.180904+00:00",
-    "USDCHF#_M16: Immed Rebal": "2026-11-06T15:30:40.180904+00:00",
-    "NDXUSD#_M17: Mitigation": "2026-11-06T15:40:34.985401+00:00",
-    "DJIUSD#_M16: Immed Rebal": "2026-11-06T20:10:35.249360+00:00",
-    "XAUUSD#_M26: Ma Deuce": "2026-11-06T20:15:31.926306+00:00",
-    "XAUUSD#_M11: Unicorn": "2026-11-06T20:15:31.926306+00:00",
-    "XAUUSD#_M50: Key Turn Pt": "2026-11-06T20:15:31.926306+00:00",
-    "XAUUSD#_M106: BPR Bolo": "2026-11-06T20:15:31.926306+00:00",
-    "XAUUSD#_M76: Disrespect BISI": "2026-11-06T20:40:30.747078+00:00"
-  },
-  "last_day": "2026-11-06"
+  "last_entry_times": {},
+  "last_day": "2026-11-07"
 }
