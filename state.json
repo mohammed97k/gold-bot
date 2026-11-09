@@ -1,36 +1,6 @@
 {
   "active_trades": [
     {
-      "symbol": "NDXUSD#",
-      "model": "M41: Old Highs",
-      "direction": "SELL",
-      "entry": 27845.15,
-      "sl": 27845.15,
-      "tp1": 27745.15,
-      "tp2": 27645.15,
-      "tp3": 27545.15,
-      "risk_pts": 92.11599830871637,
-      "tp1_hit": true,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "entry_time": "2026-11-09T16:05:31.638578+00:00"
-    },
-    {
-      "symbol": "NDXUSD#",
-      "model": "M92: Real Void",
-      "direction": "SELL",
-      "entry": 27845.15,
-      "sl": 27845.15,
-      "tp1": 27745.15,
-      "tp2": 27645.15,
-      "tp3": 27545.15,
-      "risk_pts": 92.11599830871637,
-      "tp1_hit": true,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "entry_time": "2026-11-09T16:05:31.638578+00:00"
-    },
-    {
       "symbol": "DJIUSD#",
       "model": "M16: Immed Rebal",
       "direction": "BUY",
