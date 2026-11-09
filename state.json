@@ -5,12 +5,12 @@
       "model": "M16: Immed Rebal",
       "direction": "BUY",
       "entry": 4116.46,
-      "sl": 4111.86,
+      "sl": 4116.46,
       "tp1": 4126.46,
       "tp2": 4136.46,
       "tp3": 4146.46,
       "risk_pts": 46.08377043115979,
-      "tp1_hit": false,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-09T14:40:37.073759+00:00",
@@ -37,12 +37,12 @@
       "model": "M11: Unicorn",
       "direction": "BUY",
       "entry": 4116.46,
-      "sl": 4111.86,
+      "sl": 4116.46,
       "tp1": 4126.46,
       "tp2": 4136.46,
       "tp3": 4146.46,
       "risk_pts": 46.08377043115979,
-      "tp1_hit": false,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-09T14:40:37.073759+00:00",
@@ -53,12 +53,12 @@
       "model": "M45: 10-Min Rule",
       "direction": "BUY",
       "entry": 4116.46,
-      "sl": 4111.86,
+      "sl": 4116.46,
       "tp1": 4126.46,
       "tp2": 4136.46,
       "tp3": 4146.46,
       "risk_pts": 46.08377043115979,
-      "tp1_hit": false,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-09T14:40:37.073759+00:00",
@@ -93,6 +93,22 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "entry_time": "2026-11-09T16:05:31.638578+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 52164.35,
+      "sl": 52102.73,
+      "tp1": 52264.35,
+      "tp2": 52364.35,
+      "tp3": 52464.35,
+      "risk_pts": 61.61606303118606,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-09T16:00:44.706682+00:00",
+      "entry_time": "2026-11-09T16:15:33.541970+00:00"
     }
   ],
   "pending_orders": [
@@ -155,21 +171,6 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-09T15:35:31.442263+00:00"
-    },
-    {
-      "symbol": "DJIUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 52164.35,
-      "sl": 52102.73,
-      "tp1": 52264.35,
-      "tp2": 52364.35,
-      "tp3": 52464.35,
-      "risk_pts": 61.61606303118606,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-09T16:00:44.706682+00:00"
     }
   ],
   "last_entry_times": {
@@ -178,7 +179,8 @@
     "XAUUSD#_M11: Unicorn": "2026-11-09T15:05:27.651477+00:00",
     "XAUUSD#_M45: 10-Min Rule": "2026-11-09T15:05:27.651477+00:00",
     "NDXUSD#_M41: Old Highs": "2026-11-09T16:05:31.638578+00:00",
-    "NDXUSD#_M92: Real Void": "2026-11-09T16:05:31.638578+00:00"
+    "NDXUSD#_M92: Real Void": "2026-11-09T16:05:31.638578+00:00",
+    "DJIUSD#_M16: Immed Rebal": "2026-11-09T16:15:33.541970+00:00"
   },
   "last_day": "2026-11-09"
 }
