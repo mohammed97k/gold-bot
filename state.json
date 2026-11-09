@@ -17,7 +17,23 @@
       "entry_time": "2026-11-09T16:15:33.541970+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "GBPJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 212.055,
+      "sl": 212.148,
+      "tp1": 211.855,
+      "tp2": 211.754,
+      "tp3": 211.654,
+      "risk_pts": 9.382349939266987,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-09T19:30:40.675101+00:00"
+    }
+  ],
   "last_entry_times": {
     "XAUUSD#_M16: Immed Rebal": "2026-11-09T15:05:27.651477+00:00",
     "XAUUSD#_M76: Disrespect BISI": "2026-11-09T15:05:27.651477+00:00",
