@@ -21,12 +21,12 @@
       "model": "M41: Old Highs",
       "direction": "SELL",
       "entry": 27845.15,
-      "sl": 27937.27,
+      "sl": 27845.15,
       "tp1": 27745.15,
       "tp2": 27645.15,
       "tp3": 27545.15,
       "risk_pts": 92.11599830871637,
-      "tp1_hit": false,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "entry_time": "2026-11-09T16:05:31.638578+00:00"
@@ -36,12 +36,12 @@
       "model": "M92: Real Void",
       "direction": "SELL",
       "entry": 27845.15,
-      "sl": 27937.27,
+      "sl": 27845.15,
       "tp1": 27745.15,
       "tp2": 27645.15,
       "tp3": 27545.15,
       "risk_pts": 92.11599830871637,
-      "tp1_hit": false,
+      "tp1_hit": true,
       "tp2_hit": false,
       "tp3_hit": false,
       "entry_time": "2026-11-09T16:05:31.638578+00:00"
@@ -63,38 +63,7 @@
       "entry_time": "2026-11-09T16:15:33.541970+00:00"
     }
   ],
-  "pending_orders": [
-    {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 27714.1,
-      "sl": 27656.39,
-      "tp1": 27814.1,
-      "tp2": 27914.1,
-      "tp3": 28014.1,
-      "risk_pts": 57.70678938740821,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-09T15:35:31.442263+00:00"
-    },
-    {
-      "symbol": "EURJPY#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 176.933,
-      "sl": 176.842,
-      "tp1": 177.133,
-      "tp2": 177.233,
-      "tp3": 177.333,
-      "risk_pts": 9.076416153172318,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-09T15:35:31.442263+00:00"
-    }
-  ],
+  "pending_orders": [],
   "last_entry_times": {
     "XAUUSD#_M16: Immed Rebal": "2026-11-09T15:05:27.651477+00:00",
     "XAUUSD#_M76: Disrespect BISI": "2026-11-09T15:05:27.651477+00:00",
