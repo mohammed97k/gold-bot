@@ -125,6 +125,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-09T15:35:31.442263+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 52164.35,
+      "sl": 52102.73,
+      "tp1": 52264.35,
+      "tp2": 52364.35,
+      "tp3": 52464.35,
+      "risk_pts": 61.61606303118606,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-09T16:00:44.706682+00:00"
     }
   ],
   "last_entry_times": {
