@@ -113,36 +113,6 @@
   ],
   "pending_orders": [
     {
-      "symbol": "XAUUSD#",
-      "model": "M26: Ma Deuce",
-      "direction": "BUY",
-      "entry": 4116.46,
-      "sl": 4111.9,
-      "tp1": 4126.46,
-      "tp2": 4136.46,
-      "tp3": 4146.46,
-      "risk_pts": 45.65850111464897,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-09T15:15:33.846998+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M54: Algo Clock",
-      "direction": "BUY",
-      "entry": 4116.46,
-      "sl": 4111.9,
-      "tp1": 4126.46,
-      "tp2": 4136.46,
-      "tp3": 4146.46,
-      "risk_pts": 45.65850111464897,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-09T15:15:33.846998+00:00"
-    },
-    {
       "symbol": "NDXUSD#",
       "model": "M16: Immed Rebal",
       "direction": "BUY",
