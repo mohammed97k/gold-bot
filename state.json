@@ -63,6 +63,36 @@
       "tp3_hit": false,
       "created_at": "2026-11-09T14:40:37.073759+00:00",
       "entry_time": "2026-11-09T15:05:27.651477+00:00"
+    },
+    {
+      "symbol": "NDXUSD#",
+      "model": "M41: Old Highs",
+      "direction": "SELL",
+      "entry": 27845.15,
+      "sl": 27937.27,
+      "tp1": 27745.15,
+      "tp2": 27645.15,
+      "tp3": 27545.15,
+      "risk_pts": 92.11599830871637,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "entry_time": "2026-11-09T16:05:31.638578+00:00"
+    },
+    {
+      "symbol": "NDXUSD#",
+      "model": "M92: Real Void",
+      "direction": "SELL",
+      "entry": 27845.15,
+      "sl": 27937.27,
+      "tp1": 27745.15,
+      "tp2": 27645.15,
+      "tp3": 27545.15,
+      "risk_pts": 92.11599830871637,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "entry_time": "2026-11-09T16:05:31.638578+00:00"
     }
   ],
   "pending_orders": [
@@ -146,7 +176,9 @@
     "XAUUSD#_M16: Immed Rebal": "2026-11-09T15:05:27.651477+00:00",
     "XAUUSD#_M76: Disrespect BISI": "2026-11-09T15:05:27.651477+00:00",
     "XAUUSD#_M11: Unicorn": "2026-11-09T15:05:27.651477+00:00",
-    "XAUUSD#_M45: 10-Min Rule": "2026-11-09T15:05:27.651477+00:00"
+    "XAUUSD#_M45: 10-Min Rule": "2026-11-09T15:05:27.651477+00:00",
+    "NDXUSD#_M41: Old Highs": "2026-11-09T16:05:31.638578+00:00",
+    "NDXUSD#_M92: Real Void": "2026-11-09T16:05:31.638578+00:00"
   },
   "last_day": "2026-11-09"
 }
