@@ -1,15 +1,6 @@
 {
   "active_trades": [],
   "pending_orders": [],
-  "last_entry_times": {
-    "XAUUSD#_M16: Immed Rebal": "2026-11-09T15:05:27.651477+00:00",
-    "XAUUSD#_M76: Disrespect BISI": "2026-11-09T15:05:27.651477+00:00",
-    "XAUUSD#_M11: Unicorn": "2026-11-09T15:05:27.651477+00:00",
-    "XAUUSD#_M45: 10-Min Rule": "2026-11-09T15:05:27.651477+00:00",
-    "NDXUSD#_M41: Old Highs": "2026-11-09T16:05:31.638578+00:00",
-    "NDXUSD#_M92: Real Void": "2026-11-09T16:05:31.638578+00:00",
-    "DJIUSD#_M16: Immed Rebal": "2026-11-09T16:15:33.541970+00:00",
-    "GBPJPY#_M16: Immed Rebal": "2026-11-09T20:15:37.133450+00:00"
-  },
-  "last_day": "2026-11-09"
+  "last_entry_times": {},
+  "last_day": "2026-11-10"
 }
