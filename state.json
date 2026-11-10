@@ -33,23 +33,7 @@
       "entry_time": "2026-11-10T15:05:39.009614+00:00"
     }
   ],
-  "pending_orders": [
-    {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 27765.1,
-      "sl": 27817.88,
-      "tp1": 27665.1,
-      "tp2": 27565.1,
-      "tp3": 27465.1,
-      "risk_pts": 52.7807350288349,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-10T16:15:34.631192+00:00"
-    }
-  ],
+  "pending_orders": [],
   "last_entry_times": {
     "NDXUSD#_M64: Morning Macro": "2026-11-10T14:55:33.148235+00:00",
     "XAUUSD#_M16: Immed Rebal": "2026-11-10T15:05:39.009614+00:00",
