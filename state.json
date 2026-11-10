@@ -65,7 +65,38 @@
       "entry_time": "2026-11-10T18:45:36.424919+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "NDXUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 27559.7,
+      "sl": 27501.11,
+      "tp1": 27659.7,
+      "tp2": 27759.7,
+      "tp3": 27859.7,
+      "risk_pts": 58.585999398550484,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T19:00:44.640096+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 52106.8,
+      "sl": 52055.0,
+      "tp1": 52206.8,
+      "tp2": 52306.8,
+      "tp3": 52406.8,
+      "risk_pts": 51.79619159025606,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T19:00:44.640096+00:00"
+    }
+  ],
   "last_entry_times": {
     "NDXUSD#_M64: Morning Macro": "2026-11-10T14:55:33.148235+00:00",
     "XAUUSD#_M16: Immed Rebal": "2026-11-10T15:05:39.009614+00:00",
