@@ -1,23 +1,37 @@
 {
-  "active_trades": [
+  "active_trades": [],
+  "pending_orders": [
     {
-      "symbol": "NDXUSD#",
-      "model": "M64: Morning Macro",
+      "symbol": "XAUUSD#",
+      "model": "M16: Immed Rebal",
       "direction": "SELL",
-      "entry": 27701.85,
-      "sl": 27774.81,
-      "tp1": 27601.85,
-      "tp2": 27501.85,
-      "tp3": 27401.85,
-      "risk_pts": 72.95876412210418,
+      "entry": 4047.7,
+      "sl": 4052.37,
+      "tp1": 4037.7,
+      "tp2": 4027.7,
+      "tp3": 4017.7,
+      "risk_pts": 46.62783037768804,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-10T14:50:37.232691+00:00",
-      "entry_time": "2026-11-10T14:55:33.148235+00:00"
+      "created_at": "2026-11-10T15:00:46.300607+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M76: Disrespect BISI",
+      "direction": "SELL",
+      "entry": 4046.84,
+      "sl": 4052.37,
+      "tp1": 4036.84,
+      "tp2": 4026.84,
+      "tp3": 4016.84,
+      "risk_pts": 55.27783037768586,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T15:00:46.300607+00:00"
     }
   ],
-  "pending_orders": [],
   "last_entry_times": {
     "NDXUSD#_M64: Morning Macro": "2026-11-10T14:55:33.148235+00:00"
   },
