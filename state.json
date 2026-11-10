@@ -112,6 +112,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-10T20:00:45.463207+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M11: Unicorn",
+      "direction": "BUY",
+      "entry": 52163.05,
+      "sl": 52115.33,
+      "tp1": 52263.05,
+      "tp2": 52363.05,
+      "tp3": 52463.05,
+      "risk_pts": 47.71838167001988,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T20:15:40.425583+00:00"
     }
   ],
   "last_entry_times": {
