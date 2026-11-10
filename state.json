@@ -33,7 +33,23 @@
       "entry_time": "2026-11-10T15:05:39.009614+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "EURJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 177.29,
+      "sl": 177.374,
+      "tp1": 177.09,
+      "tp2": 176.99,
+      "tp3": 176.89,
+      "risk_pts": 8.354985700535167,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T15:30:45.728452+00:00"
+    }
+  ],
   "last_entry_times": {
     "NDXUSD#_M64: Morning Macro": "2026-11-10T14:55:33.148235+00:00",
     "XAUUSD#_M16: Immed Rebal": "2026-11-10T15:05:39.009614+00:00",
