@@ -95,6 +95,51 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-10T19:00:44.640096+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M26: Ma Deuce",
+      "direction": "SELL",
+      "entry": 4030.48,
+      "sl": 4037.69,
+      "tp1": 4020.48,
+      "tp2": 4010.48,
+      "tp3": 4000.48,
+      "risk_pts": 72.02563745855059,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T19:10:34.186604+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M54: Algo Clock",
+      "direction": "SELL",
+      "entry": 4030.48,
+      "sl": 4037.69,
+      "tp1": 4020.48,
+      "tp2": 4010.48,
+      "tp3": 4000.48,
+      "risk_pts": 72.02563745855059,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T19:10:34.186604+00:00"
+    },
+    {
+      "symbol": "EURJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 177.233,
+      "sl": 177.153,
+      "tp1": 177.433,
+      "tp2": 177.533,
+      "tp3": 177.633,
+      "risk_pts": 8.01356511793756,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T19:10:34.186604+00:00"
     }
   ],
   "last_entry_times": {
