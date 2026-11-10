@@ -1,6 +1,5 @@
 {
-  "active_trades": [],
-  "pending_orders": [
+  "active_trades": [
     {
       "symbol": "XAUUSD#",
       "model": "M53: Risk Gov",
@@ -14,7 +13,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-10T18:40:33.096645+00:00"
+      "created_at": "2026-11-10T18:40:33.096645+00:00",
+      "entry_time": "2026-11-10T18:45:36.424919+00:00"
     },
     {
       "symbol": "XAUUSD#",
@@ -29,7 +29,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-10T18:40:33.096645+00:00"
+      "created_at": "2026-11-10T18:40:33.096645+00:00",
+      "entry_time": "2026-11-10T18:45:36.424919+00:00"
     },
     {
       "symbol": "XAUUSD#",
@@ -44,7 +45,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-10T18:40:33.096645+00:00"
+      "created_at": "2026-11-10T18:40:33.096645+00:00",
+      "entry_time": "2026-11-10T18:45:36.424919+00:00"
     },
     {
       "symbol": "XAUUSD#",
@@ -59,13 +61,19 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-10T18:40:33.096645+00:00"
+      "created_at": "2026-11-10T18:40:33.096645+00:00",
+      "entry_time": "2026-11-10T18:45:36.424919+00:00"
     }
   ],
+  "pending_orders": [],
   "last_entry_times": {
     "NDXUSD#_M64: Morning Macro": "2026-11-10T14:55:33.148235+00:00",
     "XAUUSD#_M16: Immed Rebal": "2026-11-10T15:05:39.009614+00:00",
-    "XAUUSD#_M76: Disrespect BISI": "2026-11-10T15:05:39.009614+00:00"
+    "XAUUSD#_M76: Disrespect BISI": "2026-11-10T15:05:39.009614+00:00",
+    "XAUUSD#_M53: Risk Gov": "2026-11-10T18:45:36.424919+00:00",
+    "XAUUSD#_M11: Unicorn": "2026-11-10T18:45:36.424919+00:00",
+    "XAUUSD#_M50: Key Turn Pt": "2026-11-10T18:45:36.424919+00:00",
+    "XAUUSD#_M106: BPR Bolo": "2026-11-10T18:45:36.424919+00:00"
   },
   "last_day": "2026-11-10"
 }
