@@ -99,36 +99,6 @@
   ],
   "pending_orders": [
     {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 27559.7,
-      "sl": 27501.11,
-      "tp1": 27659.7,
-      "tp2": 27759.7,
-      "tp3": 27859.7,
-      "risk_pts": 58.585999398550484,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-10T19:00:44.640096+00:00"
-    },
-    {
-      "symbol": "DJIUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 52106.8,
-      "sl": 52055.0,
-      "tp1": 52206.8,
-      "tp2": 52306.8,
-      "tp3": 52406.8,
-      "risk_pts": 51.79619159025606,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-10T19:00:44.640096+00:00"
-    },
-    {
       "symbol": "EURJPY#",
       "model": "M16: Immed Rebal",
       "direction": "BUY",
@@ -142,6 +112,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-10T19:10:34.186604+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 52163.05,
+      "sl": 52116.0,
+      "tp1": 52263.05,
+      "tp2": 52363.05,
+      "tp3": 52463.05,
+      "risk_pts": 47.054095955740195,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-10T20:00:45.463207+00:00"
     }
   ],
   "last_entry_times": {
