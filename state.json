@@ -1,5 +1,22 @@
 {
-  "active_trades": [],
+  "active_trades": [
+    {
+      "symbol": "NDXUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 28227.9,
+      "sl": 28270.7,
+      "tp1": 28127.9,
+      "tp2": 28027.9,
+      "tp3": 27927.9,
+      "risk_pts": 42.80309886309624,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-11T15:02:01.165685+00:00",
+      "entry_time": "2026-11-11T15:30:42.895731+00:00"
+    }
+  ],
   "pending_orders": [
     {
       "symbol": "EURUSD#",
@@ -17,21 +34,6 @@
       "created_at": "2026-11-11T14:30:44.086399+00:00"
     },
     {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 28227.9,
-      "sl": 28270.7,
-      "tp1": 28127.9,
-      "tp2": 28027.9,
-      "tp3": 27927.9,
-      "risk_pts": 42.80309886309624,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-11T15:02:01.165685+00:00"
-    },
-    {
       "symbol": "XAUUSD#",
       "model": "M76: Disrespect BISI",
       "direction": "SELL",
@@ -45,8 +47,25 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-11T15:15:31.886982+00:00"
+    },
+    {
+      "symbol": "EURJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 177.178,
+      "sl": 177.092,
+      "tp1": 177.378,
+      "tp2": 177.478,
+      "tp3": 177.578,
+      "risk_pts": 8.519277457514818,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-11T15:30:42.895731+00:00"
     }
   ],
-  "last_entry_times": {},
+  "last_entry_times": {
+    "NDXUSD#_M16: Immed Rebal": "2026-11-11T15:30:42.895731+00:00"
+  },
   "last_day": "2026-11-11"
 }
