@@ -46,6 +46,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-11T15:30:42.895731+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M6: Propulsion",
+      "direction": "BUY",
+      "entry": 52159.4,
+      "sl": 52031.28,
+      "tp1": 52259.4,
+      "tp2": 52359.4,
+      "tp3": 52459.4,
+      "risk_pts": 128.1164837922479,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-11T15:45:35.664091+00:00"
     }
   ],
   "last_entry_times": {
