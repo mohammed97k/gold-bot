@@ -16,7 +16,53 @@
       "entry_time": "2026-11-11T15:40:35.141776+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 3996.33,
+      "sl": 4000.95,
+      "tp1": 3986.33,
+      "tp2": 3976.33,
+      "tp3": 3966.33,
+      "risk_pts": 46.22285815271425,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-11T18:30:37.536960+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M76: Disrespect BISI",
+      "direction": "SELL",
+      "entry": 3994.22,
+      "sl": 4000.95,
+      "tp1": 3984.22,
+      "tp2": 3974.22,
+      "tp3": 3964.22,
+      "risk_pts": 67.32285815271553,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-11T18:30:37.536960+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 52455.0,
+      "sl": 52394.59,
+      "tp1": 52555.0,
+      "tp2": 52655.0,
+      "tp3": 52755.0,
+      "risk_pts": 60.413217359848204,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-11T18:30:37.536960+00:00"
+    }
+  ],
   "last_entry_times": {
     "NDXUSD#_M16: Immed Rebal": "2026-11-11T15:30:42.895731+00:00",
     "XAUUSD#_M18: Rejection": "2026-11-11T15:40:35.141776+00:00",
