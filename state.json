@@ -34,21 +34,6 @@
   ],
   "pending_orders": [
     {
-      "symbol": "XAUUSD#",
-      "model": "M76: Disrespect BISI",
-      "direction": "SELL",
-      "entry": 4018.53,
-      "sl": 4030.89,
-      "tp1": 4008.53,
-      "tp2": 3998.53,
-      "tp3": 3988.53,
-      "risk_pts": 123.5545584247393,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-11T15:15:31.886982+00:00"
-    },
-    {
       "symbol": "EURJPY#",
       "model": "M16: Immed Rebal",
       "direction": "BUY",
