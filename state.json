@@ -30,9 +30,7 @@
       "tp3_hit": false,
       "created_at": "2026-11-11T15:45:35.664091+00:00",
       "entry_time": "2026-11-11T15:50:33.466607+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
     {
       "symbol": "DJIUSD#",
       "model": "M11: Unicorn",
@@ -46,7 +44,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-11T16:28:06.981114+00:00"
+      "created_at": "2026-11-11T16:28:06.981114+00:00",
+      "entry_time": "2026-11-11T16:40:34.751050+00:00"
     },
     {
       "symbol": "DJIUSD#",
@@ -61,13 +60,17 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-11T16:28:06.981114+00:00"
+      "created_at": "2026-11-11T16:28:06.981114+00:00",
+      "entry_time": "2026-11-11T16:40:34.751050+00:00"
     }
   ],
+  "pending_orders": [],
   "last_entry_times": {
     "NDXUSD#_M16: Immed Rebal": "2026-11-11T15:30:42.895731+00:00",
     "XAUUSD#_M18: Rejection": "2026-11-11T15:40:35.141776+00:00",
-    "DJIUSD#_M6: Propulsion": "2026-11-11T15:50:33.466607+00:00"
+    "DJIUSD#_M6: Propulsion": "2026-11-11T15:50:33.466607+00:00",
+    "DJIUSD#_M11: Unicorn": "2026-11-11T16:40:34.751050+00:00",
+    "DJIUSD#_M45: 10-Min Rule": "2026-11-11T16:40:34.751050+00:00"
   },
   "last_day": "2026-11-11"
 }
