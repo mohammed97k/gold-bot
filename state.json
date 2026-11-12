@@ -1,6 +1,24 @@
 {
-  "active_trades": [],
+  "active_trades": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "M18: Rejection",
+      "direction": "SELL",
+      "entry": 3868.58,
+      "sl": 3877.86,
+      "tp1": 3858.58,
+      "tp2": 3848.58,
+      "tp3": 3838.58,
+      "risk_pts": 92.77696175207439,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "entry_time": "2026-11-12T15:05:34.253094+00:00"
+    }
+  ],
   "pending_orders": [],
-  "last_entry_times": {},
+  "last_entry_times": {
+    "XAUUSD#_M18: Rejection": "2026-11-12T15:05:34.253094+00:00"
+  },
   "last_day": "2026-11-12"
 }
