@@ -31,6 +31,22 @@
       "tp3_hit": false,
       "created_at": "2026-11-12T15:30:38.130853+00:00",
       "entry_time": "2026-11-12T16:00:42.937005+00:00"
+    },
+    {
+      "symbol": "GBPJPY#",
+      "model": "M45: 10-Min Rule",
+      "direction": "SELL",
+      "entry": 211.692,
+      "sl": 211.773,
+      "tp1": 211.492,
+      "tp2": 211.392,
+      "tp3": 211.292,
+      "risk_pts": 8.087576806934749,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-12T16:00:42.937005+00:00",
+      "entry_time": "2026-11-12T16:15:36.702891+00:00"
     }
   ],
   "pending_orders": [
@@ -63,21 +79,6 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-12T15:30:38.130853+00:00"
-    },
-    {
-      "symbol": "GBPJPY#",
-      "model": "M45: 10-Min Rule",
-      "direction": "SELL",
-      "entry": 211.692,
-      "sl": 211.773,
-      "tp1": 211.492,
-      "tp2": 211.392,
-      "tp3": 211.292,
-      "risk_pts": 8.087576806934749,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-12T16:00:42.937005+00:00"
     }
   ],
   "last_entry_times": {
@@ -86,7 +87,8 @@
     "XAUUSD#_M76: Disrespect BISI": "2026-11-12T15:35:32.569281+00:00",
     "DJIUSD#_M16: Immed Rebal": "2026-11-12T15:35:32.569281+00:00",
     "GBPJPY#_M16: Immed Rebal": "2026-11-12T16:00:42.937005+00:00",
-    "EURJPY#_M16: Immed Rebal": "2026-11-12T16:00:42.937005+00:00"
+    "EURJPY#_M16: Immed Rebal": "2026-11-12T16:00:42.937005+00:00",
+    "GBPJPY#_M45: 10-Min Rule": "2026-11-12T16:15:36.702891+00:00"
   },
   "last_day": "2026-11-12"
 }
