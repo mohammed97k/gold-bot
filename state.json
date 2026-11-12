@@ -51,36 +51,6 @@
   ],
   "pending_orders": [
     {
-      "symbol": "EURUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 1.10681,
-      "sl": 1.10766,
-      "tp1": 1.10481,
-      "tp2": 1.10381,
-      "tp3": 1.10281,
-      "risk_pts": 8.542189496112407,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-12T15:30:38.130853+00:00"
-    },
-    {
-      "symbol": "GBPUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 1.32392,
-      "sl": 1.32481,
-      "tp1": 1.32192,
-      "tp2": 1.32092,
-      "tp3": 1.31992,
-      "risk_pts": 8.924671620367253,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-12T15:30:38.130853+00:00"
-    },
-    {
       "symbol": "XAUUSD#",
       "model": "M53: Risk Gov",
       "direction": "SELL",
