@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "GBPJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 211.548,
+      "sl": 211.466,
+      "tp1": 211.748,
+      "tp2": 211.848,
+      "tp3": 211.948,
+      "risk_pts": 8.182066056818371,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-13T14:30:42.362043+00:00"
+    }
+  ],
   "last_entry_times": {},
   "last_day": "2026-11-13"
 }
