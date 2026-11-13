@@ -79,38 +79,6 @@
       "tp3_hit": false,
       "created_at": "2026-11-12T16:20:34.459397+00:00",
       "entry_time": "2026-11-12T16:55:29.567224+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M26: Ma Deuce",
-      "direction": "SELL",
-      "entry": 3877.98,
-      "sl": 3887.16,
-      "tp1": 3867.98,
-      "tp2": 3857.98,
-      "tp3": 3847.98,
-      "risk_pts": 91.75745835926136,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-12T19:05:29.711258+00:00",
-      "entry_time": "2026-11-12T19:10:34.845310+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M54: Algo Clock",
-      "direction": "SELL",
-      "entry": 3877.98,
-      "sl": 3887.16,
-      "tp1": 3867.98,
-      "tp2": 3857.98,
-      "tp3": 3847.98,
-      "risk_pts": 91.75745835926136,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-12T19:05:29.711258+00:00",
-      "entry_time": "2026-11-12T19:10:34.845310+00:00"
     }
   ],
   "pending_orders": [],
