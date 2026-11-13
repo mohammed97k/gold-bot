@@ -113,7 +113,23 @@
       "entry_time": "2026-11-13T14:45:34.917466+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 3875.43,
+      "sl": 3881.31,
+      "tp1": 3865.43,
+      "tp2": 3855.43,
+      "tp3": 3845.43,
+      "risk_pts": 58.84264165772038,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-13T20:40:32.597890+00:00"
+    }
+  ],
   "last_entry_times": {
     "DJIUSD#_M11: Unicorn": "2026-11-13T14:40:36.320657+00:00",
     "DJIUSD#_M45: 10-Min Rule": "2026-11-13T14:40:36.320657+00:00",
