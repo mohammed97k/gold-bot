@@ -143,6 +143,36 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-13T14:55:27.064440+00:00"
+    },
+    {
+      "symbol": "GBPUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 1.32388,
+      "sl": 1.32307,
+      "tp1": 1.32588,
+      "tp2": 1.32688,
+      "tp3": 1.32788,
+      "risk_pts": 8.059581616575162,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-13T15:00:46.934901+00:00"
+    },
+    {
+      "symbol": "USDCHF#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 0.83728,
+      "sl": 0.83813,
+      "tp1": 0.83528,
+      "tp2": 0.83428,
+      "tp3": 0.83328,
+      "risk_pts": 8.52240948659877,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-13T15:00:46.934901+00:00"
     }
   ],
   "last_entry_times": {
