@@ -111,6 +111,22 @@
       "tp3_hit": false,
       "created_at": "2026-11-13T14:40:36.320657+00:00",
       "entry_time": "2026-11-13T14:45:34.917466+00:00"
+    },
+    {
+      "symbol": "GBPUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 1.32388,
+      "sl": 1.32307,
+      "tp1": 1.32588,
+      "tp2": 1.32688,
+      "tp3": 1.32788,
+      "risk_pts": 8.059581616575162,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-13T15:00:46.934901+00:00",
+      "entry_time": "2026-11-13T15:10:35.673370+00:00"
     }
   ],
   "pending_orders": [
@@ -145,21 +161,6 @@
       "created_at": "2026-11-13T14:55:27.064440+00:00"
     },
     {
-      "symbol": "GBPUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 1.32388,
-      "sl": 1.32307,
-      "tp1": 1.32588,
-      "tp2": 1.32688,
-      "tp3": 1.32788,
-      "risk_pts": 8.059581616575162,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-13T15:00:46.934901+00:00"
-    },
-    {
       "symbol": "USDCHF#",
       "model": "M16: Immed Rebal",
       "direction": "SELL",
@@ -188,6 +189,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-13T15:05:33.516267+00:00"
+    },
+    {
+      "symbol": "GBPJPY#",
+      "model": "M6: Propulsion",
+      "direction": "SELL",
+      "entry": 211.64,
+      "sl": 211.787,
+      "tp1": 211.44,
+      "tp2": 211.34,
+      "tp3": 211.24,
+      "risk_pts": 14.79436746092233,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-13T15:10:35.673370+00:00"
     }
   ],
   "last_entry_times": {
@@ -199,7 +215,8 @@
     "XAUUSD#_M11: Unicorn": "2026-11-13T14:45:34.917466+00:00",
     "XAUUSD#_M45: 10-Min Rule": "2026-11-13T14:45:34.917466+00:00",
     "XAUUSD#_M50: Key Turn Pt": "2026-11-13T14:45:34.917466+00:00",
-    "XAUUSD#_M106: BPR Bolo": "2026-11-13T14:45:34.917466+00:00"
+    "XAUUSD#_M106: BPR Bolo": "2026-11-13T14:45:34.917466+00:00",
+    "GBPUSD#_M16: Immed Rebal": "2026-11-13T15:10:35.673370+00:00"
   },
   "last_day": "2026-11-13"
 }
