@@ -127,9 +127,7 @@
       "tp3_hit": false,
       "created_at": "2026-11-13T16:05:29.643835+00:00",
       "entry_time": "2026-11-13T16:10:32.009671+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
     {
       "symbol": "DJIUSD#",
       "model": "M16: Immed Rebal",
@@ -143,9 +141,11 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-13T18:35:36.146307+00:00"
+      "created_at": "2026-11-13T18:35:36.146307+00:00",
+      "entry_time": "2026-11-13T19:05:39.796482+00:00"
     }
   ],
+  "pending_orders": [],
   "last_entry_times": {
     "DJIUSD#_M11: Unicorn": "2026-11-13T14:40:36.320657+00:00",
     "DJIUSD#_M45: 10-Min Rule": "2026-11-13T14:40:36.320657+00:00",
@@ -161,7 +161,8 @@
     "USDCHF#_M16: Immed Rebal": "2026-11-13T15:30:43.651115+00:00",
     "XAUUSD#_M18: Rejection": "2026-11-13T15:40:36.089415+00:00",
     "DJIUSD#_M6: Propulsion": "2026-11-13T16:10:32.009671+00:00",
-    "EURJPY#_M16: Immed Rebal": "2026-11-13T16:10:32.009671+00:00"
+    "EURJPY#_M16: Immed Rebal": "2026-11-13T16:10:32.009671+00:00",
+    "DJIUSD#_M16: Immed Rebal": "2026-11-13T19:05:39.796482+00:00"
   },
   "last_day": "2026-11-13"
 }
