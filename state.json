@@ -1,23 +1,6 @@
 {
   "active_trades": [],
   "pending_orders": [],
-  "last_entry_times": {
-    "XAUUSD#_M18: Rejection": "2026-11-12T15:05:34.253094+00:00",
-    "XAUUSD#_M16: Immed Rebal": "2026-11-12T15:35:32.569281+00:00",
-    "XAUUSD#_M76: Disrespect BISI": "2026-11-12T15:35:32.569281+00:00",
-    "DJIUSD#_M16: Immed Rebal": "2026-11-12T15:35:32.569281+00:00",
-    "GBPJPY#_M16: Immed Rebal": "2026-11-12T16:00:42.937005+00:00",
-    "EURJPY#_M16: Immed Rebal": "2026-11-12T16:00:42.937005+00:00",
-    "GBPJPY#_M45: 10-Min Rule": "2026-11-12T16:15:36.702891+00:00",
-    "XAUUSD#_M53: Risk Gov": "2026-11-12T16:55:29.567224+00:00",
-    "XAUUSD#_M11: Unicorn": "2026-11-12T16:55:29.567224+00:00",
-    "XAUUSD#_M45: 10-Min Rule": "2026-11-12T16:55:29.567224+00:00",
-    "XAUUSD#_M50: Key Turn Pt": "2026-11-12T16:55:29.567224+00:00",
-    "XAUUSD#_M106: BPR Bolo": "2026-11-12T16:55:29.567224+00:00",
-    "DJIUSD#_M11: Unicorn": "2026-11-12T18:45:36.953197+00:00",
-    "XAUUSD#_M26: Ma Deuce": "2026-11-12T19:10:34.845310+00:00",
-    "XAUUSD#_M54: Algo Clock": "2026-11-12T19:10:34.845310+00:00",
-    "NDXUSD#_M16: Immed Rebal": "2026-11-12T19:10:34.845310+00:00"
-  },
-  "last_day": "2026-11-12"
+  "last_entry_times": {},
+  "last_day": "2026-11-13"
 }
