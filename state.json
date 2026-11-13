@@ -113,21 +113,6 @@
       "entry_time": "2026-11-13T14:45:34.917466+00:00"
     },
     {
-      "symbol": "XAUUSD#",
-      "model": "M18: Rejection",
-      "direction": "SELL",
-      "entry": 3877.09,
-      "sl": 3882.8,
-      "tp1": 3867.09,
-      "tp2": 3857.09,
-      "tp3": 3847.09,
-      "risk_pts": 57.1379573852937,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "entry_time": "2026-11-13T15:40:36.089415+00:00"
-    },
-    {
       "symbol": "DJIUSD#",
       "model": "M6: Propulsion",
       "direction": "SELL",
