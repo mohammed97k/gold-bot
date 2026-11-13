@@ -113,22 +113,6 @@
       "entry_time": "2026-11-13T14:45:34.917466+00:00"
     },
     {
-      "symbol": "USDCHF#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 0.83728,
-      "sl": 0.83813,
-      "tp1": 0.83528,
-      "tp2": 0.83428,
-      "tp3": 0.83328,
-      "risk_pts": 8.52240948659877,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-13T15:00:46.934901+00:00",
-      "entry_time": "2026-11-13T15:30:43.651115+00:00"
-    },
-    {
       "symbol": "XAUUSD#",
       "model": "M18: Rejection",
       "direction": "SELL",
