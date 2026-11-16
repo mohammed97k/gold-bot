@@ -19,21 +19,6 @@
   ],
   "pending_orders": [
     {
-      "symbol": "DJIUSD#",
-      "model": "M17: Mitigation",
-      "direction": "SELL",
-      "entry": 51687.55,
-      "sl": 51812.8,
-      "tp1": 51587.55,
-      "tp2": 51487.55,
-      "tp3": 51387.55,
-      "risk_pts": 125.25382803472166,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-16T19:10:35.413953+00:00"
-    },
-    {
       "symbol": "GBPJPY#",
       "model": "M16: Immed Rebal",
       "direction": "SELL",
@@ -62,6 +47,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-16T20:10:34.480755+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 51581.8,
+      "sl": 51690.05,
+      "tp1": 51481.8,
+      "tp2": 51381.8,
+      "tp3": 51281.8,
+      "risk_pts": 108.2520251932001,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T20:15:36.718988+00:00"
     }
   ],
   "last_entry_times": {
