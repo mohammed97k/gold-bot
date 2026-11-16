@@ -17,22 +17,6 @@
       "entry_time": "2026-11-16T15:55:28.347799+00:00"
     },
     {
-      "symbol": "XAUUSD#",
-      "model": "M76: Disrespect BISI",
-      "direction": "SELL",
-      "entry": 3859.18,
-      "sl": 3867.36,
-      "tp1": 3849.18,
-      "tp2": 3839.18,
-      "tp3": 3829.18,
-      "risk_pts": 81.80807434874168,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-16T16:00:47.321435+00:00",
-      "entry_time": "2026-11-16T16:10:38.947101+00:00"
-    },
-    {
       "symbol": "NDXUSD#",
       "model": "M64: Morning Macro",
       "direction": "SELL",
