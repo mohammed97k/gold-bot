@@ -1,6 +1,37 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "DJIUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 51687.55,
+      "sl": 51812.8,
+      "tp1": 51587.55,
+      "tp2": 51487.55,
+      "tp3": 51387.55,
+      "risk_pts": 125.25382803472166,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T19:10:35.413953+00:00"
+    },
+    {
+      "symbol": "EURJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 175.448,
+      "sl": 175.562,
+      "tp1": 175.248,
+      "tp2": 175.148,
+      "tp3": 175.048,
+      "risk_pts": 11.319786022161793,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T19:10:35.413953+00:00"
+    }
+  ],
   "last_entry_times": {
     "XAUUSD#_M16: Immed Rebal": "2026-11-16T15:20:40.986253+00:00",
     "NDXUSD#_M16: Immed Rebal": "2026-11-16T15:45:41.757080+00:00",
