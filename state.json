@@ -1,6 +1,37 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "DJIUSD#",
+      "model": "M6: Propulsion",
+      "direction": "SELL",
+      "entry": 52284.9,
+      "sl": 52375.71,
+      "tp1": 52184.9,
+      "tp2": 52084.9,
+      "tp3": 51984.9,
+      "risk_pts": 90.81460544432048,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T14:30:46.941056+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 52280.65,
+      "sl": 52366.21,
+      "tp1": 52180.65,
+      "tp2": 52080.65,
+      "tp3": 51980.65,
+      "risk_pts": 85.56460544432048,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T14:30:46.941056+00:00"
+    }
+  ],
   "last_entry_times": {},
   "last_day": "2026-11-16"
 }
