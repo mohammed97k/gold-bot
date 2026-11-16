@@ -15,6 +15,22 @@
       "tp3_hit": false,
       "created_at": "2026-11-16T19:10:35.413953+00:00",
       "entry_time": "2026-11-16T19:30:51.921686+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 51581.8,
+      "sl": 51690.05,
+      "tp1": 51481.8,
+      "tp2": 51381.8,
+      "tp3": 51281.8,
+      "risk_pts": 108.2520251932001,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T20:15:36.718988+00:00",
+      "entry_time": "2026-11-16T20:20:33.794781+00:00"
     }
   ],
   "pending_orders": [
@@ -49,19 +65,64 @@
       "created_at": "2026-11-16T20:10:34.480755+00:00"
     },
     {
-      "symbol": "DJIUSD#",
-      "model": "M17: Mitigation",
+      "symbol": "XAUUSD#",
+      "model": "M26: Ma Deuce",
       "direction": "SELL",
-      "entry": 51581.8,
-      "sl": 51690.05,
-      "tp1": 51481.8,
-      "tp2": 51381.8,
-      "tp3": 51281.8,
-      "risk_pts": 108.2520251932001,
+      "entry": 3859.76,
+      "sl": 3866.68,
+      "tp1": 3849.76,
+      "tp2": 3839.76,
+      "tp3": 3829.76,
+      "risk_pts": 69.24366379642379,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-16T20:15:36.718988+00:00"
+      "created_at": "2026-11-16T20:20:33.794781+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M11: Unicorn",
+      "direction": "SELL",
+      "entry": 3859.76,
+      "sl": 3866.68,
+      "tp1": 3849.76,
+      "tp2": 3839.76,
+      "tp3": 3829.76,
+      "risk_pts": 69.24366379642379,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T20:20:33.794781+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M50: Key Turn Pt",
+      "direction": "SELL",
+      "entry": 3859.76,
+      "sl": 3866.68,
+      "tp1": 3849.76,
+      "tp2": 3839.76,
+      "tp3": 3829.76,
+      "risk_pts": 69.24366379642379,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T20:20:33.794781+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M106: BPR Bolo",
+      "direction": "SELL",
+      "entry": 3859.76,
+      "sl": 3866.68,
+      "tp1": 3849.76,
+      "tp2": 3839.76,
+      "tp3": 3829.76,
+      "risk_pts": 69.24366379642379,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T20:20:33.794781+00:00"
     }
   ],
   "last_entry_times": {
@@ -70,7 +131,8 @@
     "DJIUSD#_M16: Immed Rebal": "2026-11-16T15:55:28.347799+00:00",
     "XAUUSD#_M76: Disrespect BISI": "2026-11-16T16:10:38.947101+00:00",
     "NDXUSD#_M64: Morning Macro": "2026-11-16T16:30:46.014056+00:00",
-    "EURJPY#_M16: Immed Rebal": "2026-11-16T19:30:51.921686+00:00"
+    "EURJPY#_M16: Immed Rebal": "2026-11-16T19:30:51.921686+00:00",
+    "DJIUSD#_M17: Mitigation": "2026-11-16T20:20:33.794781+00:00"
   },
   "last_day": "2026-11-16"
 }
