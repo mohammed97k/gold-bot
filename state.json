@@ -35,21 +35,6 @@
   ],
   "pending_orders": [
     {
-      "symbol": "GBPJPY#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 210.312,
-      "sl": 210.427,
-      "tp1": 210.112,
-      "tp2": 210.011,
-      "tp3": 209.912,
-      "risk_pts": 11.54088688560364,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-16T19:20:36.984250+00:00"
-    },
-    {
       "symbol": "NDXUSD#",
       "model": "M17: Mitigation",
       "direction": "SELL",
@@ -123,6 +108,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-16T20:20:33.794781+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M6: Propulsion",
+      "direction": "SELL",
+      "entry": 3860.9,
+      "sl": 3869.81,
+      "tp1": 3850.9,
+      "tp2": 3840.9,
+      "tp3": 3830.9,
+      "risk_pts": 89.14366379642615,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-16T20:25:33.804720+00:00"
     }
   ],
   "last_entry_times": {
