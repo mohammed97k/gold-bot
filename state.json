@@ -1,21 +1,5 @@
 {
-  "active_trades": [],
-  "pending_orders": [
-    {
-      "symbol": "GBPJPY#",
-      "model": "M6: Propulsion",
-      "direction": "SELL",
-      "entry": 210.352,
-      "sl": 210.473,
-      "tp1": 210.152,
-      "tp2": 210.052,
-      "tp3": 209.952,
-      "risk_pts": 12.072050358588626,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-17T15:45:37.297349+00:00"
-    },
+  "active_trades": [
     {
       "symbol": "XAUUSD#",
       "model": "M16: Immed Rebal",
@@ -29,8 +13,27 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-17T16:00:47.365421+00:00"
+      "created_at": "2026-11-17T16:00:47.365421+00:00",
+      "entry_time": "2026-11-17T16:05:34.444400+00:00"
     },
+    {
+      "symbol": "GBPJPY#",
+      "model": "M6: Propulsion",
+      "direction": "SELL",
+      "entry": 210.352,
+      "sl": 210.473,
+      "tp1": 210.152,
+      "tp2": 210.052,
+      "tp3": 209.952,
+      "risk_pts": 12.072050358588626,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-17T15:45:37.297349+00:00",
+      "entry_time": "2026-11-17T16:05:34.444400+00:00"
+    }
+  ],
+  "pending_orders": [
     {
       "symbol": "USDCHF#",
       "model": "M16: Immed Rebal",
@@ -49,7 +52,9 @@
   ],
   "last_entry_times": {
     "XAUUSD#_M76: Disrespect BISI": "2026-11-17T15:25:34.772744+00:00",
-    "XAUUSD#_M17: Mitigation": "2026-11-17T15:25:34.772744+00:00"
+    "XAUUSD#_M17: Mitigation": "2026-11-17T15:25:34.772744+00:00",
+    "XAUUSD#_M16: Immed Rebal": "2026-11-17T16:05:34.444400+00:00",
+    "GBPJPY#_M6: Propulsion": "2026-11-17T16:05:34.444400+00:00"
   },
   "last_day": "2026-11-17"
 }
