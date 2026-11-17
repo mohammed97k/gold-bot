@@ -1,38 +1,5 @@
 {
-  "active_trades": [
-    {
-      "symbol": "XAUUSD#",
-      "model": "M76: Disrespect BISI",
-      "direction": "SELL",
-      "entry": 3859.95,
-      "sl": 3864.46,
-      "tp1": 3849.95,
-      "tp2": 3839.95,
-      "tp3": 3829.95,
-      "risk_pts": 45.07505131043217,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-17T15:05:30.200408+00:00",
-      "entry_time": "2026-11-17T15:25:34.772744+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M17: Mitigation",
-      "direction": "SELL",
-      "entry": 3857.92,
-      "sl": 3865.3,
-      "tp1": 3847.92,
-      "tp2": 3837.92,
-      "tp3": 3827.92,
-      "risk_pts": 73.77505131043108,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-17T15:05:30.200408+00:00",
-      "entry_time": "2026-11-17T15:25:34.772744+00:00"
-    }
-  ],
+  "active_trades": [],
   "pending_orders": [],
   "last_entry_times": {
     "XAUUSD#_M76: Disrespect BISI": "2026-11-17T15:25:34.772744+00:00",
