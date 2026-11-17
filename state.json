@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "DJIUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 50809.25,
+      "sl": 50854.94,
+      "tp1": 50709.25,
+      "tp2": 50609.25,
+      "tp3": 50509.25,
+      "risk_pts": 45.693049820118176,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-17T19:00:42.921493+00:00"
+    }
+  ],
   "last_entry_times": {
     "XAUUSD#_M76: Disrespect BISI": "2026-11-17T15:25:34.772744+00:00",
     "XAUUSD#_M17: Mitigation": "2026-11-17T15:25:34.772744+00:00",
