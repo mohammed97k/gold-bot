@@ -1,22 +1,5 @@
 {
-  "active_trades": [
-    {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 26977.3,
-      "sl": 26935.91,
-      "tp1": 27077.3,
-      "tp2": 27177.3,
-      "tp3": 27277.3,
-      "risk_pts": 41.38768380556212,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-17T18:30:39.242890+00:00",
-      "entry_time": "2026-11-17T18:35:27.379826+00:00"
-    }
-  ],
+  "active_trades": [],
   "pending_orders": [],
   "last_entry_times": {
     "XAUUSD#_M76: Disrespect BISI": "2026-11-17T15:25:34.772744+00:00",
