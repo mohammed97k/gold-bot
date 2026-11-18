@@ -1,6 +1,5 @@
 {
-  "active_trades": [],
-  "pending_orders": [
+  "active_trades": [
     {
       "symbol": "NDXUSD#",
       "model": "M16: Immed Rebal",
@@ -14,12 +13,31 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-18T19:00:51.414230+00:00"
+      "created_at": "2026-11-18T19:00:51.414230+00:00",
+      "entry_time": "2026-11-18T19:05:42.743290+00:00"
+    }
+  ],
+  "pending_orders": [
+    {
+      "symbol": "GBPJPY#",
+      "model": "M13: FOMC 2-Stage",
+      "direction": "SELL",
+      "entry": 209.504,
+      "sl": 209.624,
+      "tp1": 209.304,
+      "tp2": 209.204,
+      "tp3": 209.104,
+      "risk_pts": 11.967445159243084,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-18T19:05:42.743290+00:00"
     }
   ],
   "last_entry_times": {
     "XAUUSD#_M16: Immed Rebal": "2026-11-18T14:40:38.880665+00:00",
-    "XAUUSD#_M17: Mitigation": "2026-11-18T14:45:36.689928+00:00"
+    "XAUUSD#_M17: Mitigation": "2026-11-18T14:45:36.689928+00:00",
+    "NDXUSD#_M16: Immed Rebal": "2026-11-18T19:05:42.743290+00:00"
   },
   "last_day": "2026-11-18"
 }
