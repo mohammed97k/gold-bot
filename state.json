@@ -3,21 +3,6 @@
   "pending_orders": [
     {
       "symbol": "GBPJPY#",
-      "model": "M13: FOMC 2-Stage",
-      "direction": "SELL",
-      "entry": 209.504,
-      "sl": 209.624,
-      "tp1": 209.304,
-      "tp2": 209.204,
-      "tp3": 209.104,
-      "risk_pts": 11.967445159243084,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-18T19:05:42.743290+00:00"
-    },
-    {
-      "symbol": "GBPJPY#",
       "model": "M16: Immed Rebal",
       "direction": "SELL",
       "entry": 209.504,
