@@ -153,6 +153,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-18T14:35:34.273704+00:00"
+    },
+    {
+      "symbol": "NDXUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 27233.55,
+      "sl": 27289.95,
+      "tp1": 27133.55,
+      "tp2": 27033.55,
+      "tp3": 26933.55,
+      "risk_pts": 56.39725171961254,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-18T15:00:46.090068+00:00"
     }
   ],
   "last_entry_times": {
