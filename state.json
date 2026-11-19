@@ -14,9 +14,7 @@
       "tp2_hit": true,
       "tp3_hit": false,
       "entry_time": "2026-11-19T15:15:39.618604+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
     {
       "symbol": "GBPJPY#",
       "model": "M16: Immed Rebal",
@@ -30,8 +28,11 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-19T18:30:44.848882+00:00"
-    },
+      "created_at": "2026-11-19T18:30:44.848882+00:00",
+      "entry_time": "2026-11-19T18:40:40.036720+00:00"
+    }
+  ],
+  "pending_orders": [
     {
       "symbol": "XAUUSD#",
       "model": "M53: Risk Gov",
@@ -111,7 +112,8 @@
   "last_entry_times": {
     "EURJPY#_M43: Anti-Revenge": "2026-11-19T15:15:39.618604+00:00",
     "XAUUSD#_M76: Disrespect BISI": "2026-11-19T16:35:36.332956+00:00",
-    "NDXUSD#_M16: Immed Rebal": "2026-11-19T16:40:36.298853+00:00"
+    "NDXUSD#_M16: Immed Rebal": "2026-11-19T16:40:36.298853+00:00",
+    "GBPJPY#_M16: Immed Rebal": "2026-11-19T18:40:40.036720+00:00"
   },
   "last_day": "2026-11-19"
 }
