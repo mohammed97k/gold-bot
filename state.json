@@ -35,21 +35,6 @@
   "pending_orders": [
     {
       "symbol": "XAUUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 3683.79,
-      "sl": 3689.74,
-      "tp1": 3673.79,
-      "tp2": 3663.79,
-      "tp3": 3653.79,
-      "risk_pts": 59.54891224295807,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-19T18:45:38.595641+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
       "model": "M17: Mitigation",
       "direction": "SELL",
       "entry": 3680.62,
