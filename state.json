@@ -31,6 +31,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-19T16:05:34.580357+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M76: Disrespect BISI",
+      "direction": "SELL",
+      "entry": 3681.62,
+      "sl": 3689.77,
+      "tp1": 3671.62,
+      "tp2": 3661.62,
+      "tp3": 3651.62,
+      "risk_pts": 81.49245858280665,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-19T16:15:43.542787+00:00"
     }
   ],
   "last_entry_times": {
