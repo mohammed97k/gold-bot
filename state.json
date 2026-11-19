@@ -1,5 +1,21 @@
 {
-  "active_trades": [],
+  "active_trades": [
+    {
+      "symbol": "EURJPY#",
+      "model": "M43: Anti-Revenge",
+      "direction": "SELL",
+      "entry": 175.634,
+      "sl": 175.825,
+      "tp1": 175.434,
+      "tp2": 175.334,
+      "tp3": 175.234,
+      "risk_pts": 19.093111047092748,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "entry_time": "2026-11-19T15:15:39.618604+00:00"
+    }
+  ],
   "pending_orders": [
     {
       "symbol": "GBPUSD#",
@@ -17,6 +33,8 @@
       "created_at": "2026-11-19T15:00:47.284207+00:00"
     }
   ],
-  "last_entry_times": {},
+  "last_entry_times": {
+    "EURJPY#_M43: Anti-Revenge": "2026-11-19T15:15:39.618604+00:00"
+  },
   "last_day": "2026-11-19"
 }
