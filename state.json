@@ -34,21 +34,6 @@
   ],
   "pending_orders": [
     {
-      "symbol": "XAUUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 3671.37,
-      "sl": 3676.19,
-      "tp1": 3661.37,
-      "tp2": 3651.37,
-      "tp3": 3641.37,
-      "risk_pts": 48.18407155271416,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-19T20:10:37.697002+00:00"
-    },
-    {
       "symbol": "DJIUSD#",
       "model": "M16: Immed Rebal",
       "direction": "SELL",
