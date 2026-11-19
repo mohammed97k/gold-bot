@@ -1,21 +1,6 @@
 {
   "active_trades": [
     {
-      "symbol": "EURJPY#",
-      "model": "M43: Anti-Revenge",
-      "direction": "SELL",
-      "entry": 175.634,
-      "sl": 175.634,
-      "tp1": 175.434,
-      "tp2": 175.334,
-      "tp3": 175.234,
-      "risk_pts": 19.093111047092748,
-      "tp1_hit": true,
-      "tp2_hit": true,
-      "tp3_hit": false,
-      "entry_time": "2026-11-19T15:15:39.618604+00:00"
-    },
-    {
       "symbol": "GBPJPY#",
       "model": "M16: Immed Rebal",
       "direction": "SELL",
@@ -32,7 +17,23 @@
       "entry_time": "2026-11-19T18:40:40.036720+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 3671.37,
+      "sl": 3676.19,
+      "tp1": 3661.37,
+      "tp2": 3651.37,
+      "tp3": 3641.37,
+      "risk_pts": 48.18407155271416,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-19T20:10:37.697002+00:00"
+    }
+  ],
   "last_entry_times": {
     "EURJPY#_M43: Anti-Revenge": "2026-11-19T15:15:39.618604+00:00",
     "XAUUSD#_M76: Disrespect BISI": "2026-11-19T16:35:36.332956+00:00",
