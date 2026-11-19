@@ -122,6 +122,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-19T18:45:38.595641+00:00"
+    },
+    {
+      "symbol": "XAUUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 3680.62,
+      "sl": 3689.63,
+      "tp1": 3670.62,
+      "tp2": 3660.62,
+      "tp3": 3650.62,
+      "risk_pts": 90.17676938581644,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-19T18:50:39.035956+00:00"
     }
   ],
   "last_entry_times": {
