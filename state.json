@@ -1,22 +1,5 @@
 {
-  "active_trades": [
-    {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 26129.15,
-      "sl": 26075.42,
-      "tp1": 26229.15,
-      "tp2": 26329.15,
-      "tp3": 26429.15,
-      "risk_pts": 53.72781823475452,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-20T14:30:40.051428+00:00",
-      "entry_time": "2026-11-20T14:35:31.285850+00:00"
-    }
-  ],
+  "active_trades": [],
   "pending_orders": [
     {
       "symbol": "XAUUSD#",
@@ -32,6 +15,51 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-20T14:35:31.285850+00:00"
+    },
+    {
+      "symbol": "NDXUSD#",
+      "model": "M64: Morning Macro",
+      "direction": "SELL",
+      "entry": 26084.35,
+      "sl": 26124.41,
+      "tp1": 25984.35,
+      "tp2": 25884.35,
+      "tp3": 25784.35,
+      "risk_pts": 40.05638966332481,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-20T14:40:37.380681+00:00"
+    },
+    {
+      "symbol": "GBPJPY#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 208.201,
+      "sl": 208.288,
+      "tp1": 208.002,
+      "tp2": 207.901,
+      "tp3": 207.801,
+      "risk_pts": 8.600393419973784,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-20T14:40:37.380681+00:00"
+    },
+    {
+      "symbol": "GBPJPY#",
+      "model": "M45: 10-Min Rule",
+      "direction": "SELL",
+      "entry": 208.201,
+      "sl": 208.288,
+      "tp1": 208.002,
+      "tp2": 207.901,
+      "tp3": 207.801,
+      "risk_pts": 8.600393419973784,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-20T14:40:37.380681+00:00"
     }
   ],
   "last_entry_times": {
