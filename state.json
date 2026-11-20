@@ -1,6 +1,5 @@
 {
-  "active_trades": [],
-  "pending_orders": [
+  "active_trades": [
     {
       "symbol": "NDXUSD#",
       "model": "M16: Immed Rebal",
@@ -14,9 +13,29 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-20T14:30:40.051428+00:00"
+      "created_at": "2026-11-20T14:30:40.051428+00:00",
+      "entry_time": "2026-11-20T14:35:31.285850+00:00"
     }
   ],
-  "last_entry_times": {},
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 3573.5,
+      "sl": 3585.55,
+      "tp1": 3563.5,
+      "tp2": 3553.5,
+      "tp3": 3543.5,
+      "risk_pts": 120.50878395660675,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-20T14:35:31.285850+00:00"
+    }
+  ],
+  "last_entry_times": {
+    "NDXUSD#_M16: Immed Rebal": "2026-11-20T14:35:31.285850+00:00"
+  },
   "last_day": "2026-11-20"
 }
