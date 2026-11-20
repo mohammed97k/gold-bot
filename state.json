@@ -1,12 +1,6 @@
 {
   "active_trades": [],
   "pending_orders": [],
-  "last_entry_times": {
-    "EURJPY#_M43: Anti-Revenge": "2026-11-19T15:15:39.618604+00:00",
-    "XAUUSD#_M76: Disrespect BISI": "2026-11-19T16:35:36.332956+00:00",
-    "NDXUSD#_M16: Immed Rebal": "2026-11-19T16:40:36.298853+00:00",
-    "GBPJPY#_M16: Immed Rebal": "2026-11-19T18:40:40.036720+00:00",
-    "XAUUSD#_M18: Rejection": "2026-11-19T20:15:34.972805+00:00"
-  },
-  "last_day": "2026-11-19"
+  "last_entry_times": {},
+  "last_day": "2026-11-20"
 }
