@@ -63,6 +63,22 @@
       "tp3_hit": false,
       "created_at": "2026-11-20T18:30:38.073746+00:00",
       "entry_time": "2026-11-20T18:35:34.044042+00:00"
+    },
+    {
+      "symbol": "DJIUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 48753.5,
+      "sl": 48888.18,
+      "tp1": 48653.5,
+      "tp2": 48553.5,
+      "tp3": 48453.5,
+      "risk_pts": 134.67717185478978,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-20T18:45:34.078713+00:00",
+      "entry_time": "2026-11-20T18:50:34.282682+00:00"
     }
   ],
   "pending_orders": [
@@ -80,21 +96,6 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-20T18:35:34.044042+00:00"
-    },
-    {
-      "symbol": "DJIUSD#",
-      "model": "M17: Mitigation",
-      "direction": "SELL",
-      "entry": 48753.5,
-      "sl": 48888.18,
-      "tp1": 48653.5,
-      "tp2": 48553.5,
-      "tp3": 48453.5,
-      "risk_pts": 134.67717185478978,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-20T18:45:34.078713+00:00"
     }
   ],
   "last_entry_times": {
@@ -105,7 +106,8 @@
     "GBPJPY#_M45: 10-Min Rule": "2026-11-20T14:55:32.432751+00:00",
     "GBPJPY#_M6: Propulsion": "2026-11-20T14:55:32.432751+00:00",
     "DJIUSD#_M16: Immed Rebal": "2026-11-20T15:45:35.958158+00:00",
-    "XAUUSD#_M76: Disrespect BISI": "2026-11-20T18:35:34.044042+00:00"
+    "XAUUSD#_M76: Disrespect BISI": "2026-11-20T18:35:34.044042+00:00",
+    "DJIUSD#_M17: Mitigation": "2026-11-20T18:50:34.282682+00:00"
   },
   "last_day": "2026-11-20"
 }
