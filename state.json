@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "NDXUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "BUY",
+      "entry": 26129.15,
+      "sl": 26075.42,
+      "tp1": 26229.15,
+      "tp2": 26329.15,
+      "tp3": 26429.15,
+      "risk_pts": 53.72781823475452,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-20T14:30:40.051428+00:00"
+    }
+  ],
   "last_entry_times": {},
   "last_day": "2026-11-20"
 }
