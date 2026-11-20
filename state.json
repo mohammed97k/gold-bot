@@ -63,22 +63,6 @@
       "tp3_hit": false,
       "created_at": "2026-11-20T18:45:34.078713+00:00",
       "entry_time": "2026-11-20T18:50:34.282682+00:00"
-    },
-    {
-      "symbol": "XAUUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 3520.22,
-      "sl": 3526.45,
-      "tp1": 3510.22,
-      "tp2": 3500.22,
-      "tp3": 3490.22,
-      "risk_pts": 62.37547022773015,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-20T18:35:34.044042+00:00",
-      "entry_time": "2026-11-20T18:55:33.455692+00:00"
     }
   ],
   "pending_orders": [],
