@@ -1,22 +1,5 @@
 {
-  "active_trades": [
-    {
-      "symbol": "NDXUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 26696.45,
-      "sl": 26781.56,
-      "tp1": 26596.45,
-      "tp2": 26496.45,
-      "tp3": 26396.45,
-      "risk_pts": 85.11014574030924,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-23T19:00:45.601411+00:00",
-      "entry_time": "2026-11-23T19:05:32.313208+00:00"
-    }
-  ],
+  "active_trades": [],
   "pending_orders": [],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-23T14:40:33.560219+00:00",
