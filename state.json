@@ -30,6 +30,21 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-23T15:35:31.383092+00:00"
+    },
+    {
+      "symbol": "GBPUSD#",
+      "model": "M16: Immed Rebal",
+      "direction": "SELL",
+      "entry": 1.30245,
+      "sl": 1.30343,
+      "tp1": 1.30045,
+      "tp2": 1.29945,
+      "tp3": 1.29844,
+      "risk_pts": 9.801319930868857,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-23T16:00:46.770591+00:00"
     }
   ],
   "last_entry_times": {
