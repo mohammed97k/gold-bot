@@ -1,21 +1,23 @@
 {
-  "active_trades": [],
-  "pending_orders": [
+  "active_trades": [
     {
-      "symbol": "XAUUSD#",
+      "symbol": "GBPUSD#",
       "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 3660.89,
-      "sl": 3654.17,
-      "tp1": 3670.89,
-      "tp2": 3680.89,
-      "tp3": 3690.89,
-      "risk_pts": 67.21388783535986,
+      "direction": "SELL",
+      "entry": 1.30245,
+      "sl": 1.30343,
+      "tp1": 1.30045,
+      "tp2": 1.29945,
+      "tp3": 1.29844,
+      "risk_pts": 9.801319930868857,
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-23T15:10:38.301206+00:00"
-    },
+      "created_at": "2026-11-23T16:00:46.770591+00:00",
+      "entry_time": "2026-11-23T16:10:41.989062+00:00"
+    }
+  ],
+  "pending_orders": [
     {
       "symbol": "EURUSD#",
       "model": "M16: Immed Rebal",
@@ -30,28 +32,14 @@
       "tp2_hit": false,
       "tp3_hit": false,
       "created_at": "2026-11-23T15:35:31.383092+00:00"
-    },
-    {
-      "symbol": "GBPUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 1.30245,
-      "sl": 1.30343,
-      "tp1": 1.30045,
-      "tp2": 1.29945,
-      "tp3": 1.29844,
-      "risk_pts": 9.801319930868857,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-23T16:00:46.770591+00:00"
     }
   ],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-23T14:40:33.560219+00:00",
     "DJIUSD#_M11: Unicorn": "2026-11-23T14:45:33.775974+00:00",
     "DJIUSD#_M45: 10-Min Rule": "2026-11-23T14:45:33.775974+00:00",
-    "EURJPY#_M16: Immed Rebal": "2026-11-23T14:45:33.775974+00:00"
+    "EURJPY#_M16: Immed Rebal": "2026-11-23T14:45:33.775974+00:00",
+    "GBPUSD#_M16: Immed Rebal": "2026-11-23T16:10:41.989062+00:00"
   },
   "last_day": "2026-11-23"
 }
