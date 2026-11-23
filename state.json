@@ -1,22 +1,5 @@
 {
-  "active_trades": [
-    {
-      "symbol": "EURJPY#",
-      "model": "M16: Immed Rebal",
-      "direction": "BUY",
-      "entry": 174.188,
-      "sl": 174.079,
-      "tp1": 174.388,
-      "tp2": 174.488,
-      "tp3": 174.588,
-      "risk_pts": 10.811455867519726,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-23T14:30:42.772279+00:00",
-      "entry_time": "2026-11-23T14:45:33.775974+00:00"
-    }
-  ],
+  "active_trades": [],
   "pending_orders": [
     {
       "symbol": "GBPJPY#",
