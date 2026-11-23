@@ -17,23 +17,7 @@
       "entry_time": "2026-11-23T16:10:41.989062+00:00"
     }
   ],
-  "pending_orders": [
-    {
-      "symbol": "EURUSD#",
-      "model": "M16: Immed Rebal",
-      "direction": "SELL",
-      "entry": 1.09214,
-      "sl": 1.09298,
-      "tp1": 1.09014,
-      "tp2": 1.08914,
-      "tp3": 1.08814,
-      "risk_pts": 8.457192616007081,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "created_at": "2026-11-23T15:35:31.383092+00:00"
-    }
-  ],
+  "pending_orders": [],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-23T14:40:33.560219+00:00",
     "DJIUSD#_M11: Unicorn": "2026-11-23T14:45:33.775974+00:00",
