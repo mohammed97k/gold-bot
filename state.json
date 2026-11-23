@@ -15,9 +15,7 @@
       "tp3_hit": false,
       "created_at": "2026-11-23T16:00:46.770591+00:00",
       "entry_time": "2026-11-23T16:10:41.989062+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
     {
       "symbol": "XAUUSD#",
       "model": "M16: Immed Rebal",
@@ -31,7 +29,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-23T19:00:45.601411+00:00"
+      "created_at": "2026-11-23T19:00:45.601411+00:00",
+      "entry_time": "2026-11-23T19:05:32.313208+00:00"
     },
     {
       "symbol": "XAUUSD#",
@@ -46,7 +45,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-23T19:00:45.601411+00:00"
+      "created_at": "2026-11-23T19:00:45.601411+00:00",
+      "entry_time": "2026-11-23T19:05:32.313208+00:00"
     },
     {
       "symbol": "NDXUSD#",
@@ -61,7 +61,8 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-23T19:00:45.601411+00:00"
+      "created_at": "2026-11-23T19:00:45.601411+00:00",
+      "entry_time": "2026-11-23T19:05:32.313208+00:00"
     },
     {
       "symbol": "DJIUSD#",
@@ -76,15 +77,21 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-23T19:00:45.601411+00:00"
+      "created_at": "2026-11-23T19:00:45.601411+00:00",
+      "entry_time": "2026-11-23T19:05:32.313208+00:00"
     }
   ],
+  "pending_orders": [],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-23T14:40:33.560219+00:00",
     "DJIUSD#_M11: Unicorn": "2026-11-23T14:45:33.775974+00:00",
     "DJIUSD#_M45: 10-Min Rule": "2026-11-23T14:45:33.775974+00:00",
     "EURJPY#_M16: Immed Rebal": "2026-11-23T14:45:33.775974+00:00",
-    "GBPUSD#_M16: Immed Rebal": "2026-11-23T16:10:41.989062+00:00"
+    "GBPUSD#_M16: Immed Rebal": "2026-11-23T16:10:41.989062+00:00",
+    "XAUUSD#_M16: Immed Rebal": "2026-11-23T19:05:32.313208+00:00",
+    "XAUUSD#_M76: Disrespect BISI": "2026-11-23T19:05:32.313208+00:00",
+    "NDXUSD#_M16: Immed Rebal": "2026-11-23T19:05:32.313208+00:00",
+    "DJIUSD#_M16: Immed Rebal": "2026-11-23T19:05:32.313208+00:00"
   },
   "last_day": "2026-11-23"
 }
