@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "M17: Mitigation",
+      "direction": "SELL",
+      "entry": 3642.07,
+      "sl": 3651.31,
+      "tp1": 3632.07,
+      "tp2": 3622.07,
+      "tp3": 3612.07,
+      "risk_pts": 92.37771382433039,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-23T20:45:34.185725+00:00"
+    }
+  ],
   "last_entry_times": {
     "GBPJPY#_M16: Immed Rebal": "2026-11-23T14:40:33.560219+00:00",
     "DJIUSD#_M11: Unicorn": "2026-11-23T14:45:33.775974+00:00",
