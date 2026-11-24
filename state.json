@@ -15,9 +15,7 @@
       "tp3_hit": false,
       "created_at": "2026-11-24T17:00:46.994241+00:00",
       "entry_time": "2026-11-24T17:05:32.053320+00:00"
-    }
-  ],
-  "pending_orders": [
+    },
     {
       "symbol": "XAUUSD#",
       "model": "SB-PM",
@@ -31,12 +29,15 @@
       "tp1_hit": false,
       "tp2_hit": false,
       "tp3_hit": false,
-      "created_at": "2026-11-24T19:00:48.622247+00:00"
+      "created_at": "2026-11-24T19:00:48.622247+00:00",
+      "entry_time": "2026-11-24T19:15:32.755452+00:00"
     }
   ],
+  "pending_orders": [],
   "last_entry_times": {
     "XAUUSD#_Judas": "2026-11-24T14:40:38.992909+00:00",
-    "XAUUSD#_Lunch": "2026-11-24T17:05:32.053320+00:00"
+    "XAUUSD#_Lunch": "2026-11-24T17:05:32.053320+00:00",
+    "XAUUSD#_SB-PM": "2026-11-24T19:15:32.755452+00:00"
   },
   "last_day": "2026-11-24"
 }
