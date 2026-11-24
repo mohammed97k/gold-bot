@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "FVG",
+      "direction": "SELL",
+      "entry": 3627.02,
+      "sl": 3634.57,
+      "tp1": 3617.02,
+      "tp2": 3607.02,
+      "tp3": 3597.02,
+      "risk_pts": 75.4692361597472,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-24T08:05:31.696537+00:00"
+    }
+  ],
   "last_entry_times": {},
   "last_day": "2026-11-24"
 }
