@@ -17,7 +17,23 @@
       "entry_time": "2026-11-24T17:05:32.053320+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "SB-PM",
+      "direction": "SELL",
+      "entry": 3559.02,
+      "sl": 3566.96,
+      "tp1": 3549.02,
+      "tp2": 3539.02,
+      "tp3": 3529.02,
+      "risk_pts": 79.49744956116774,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-24T19:00:48.622247+00:00"
+    }
+  ],
   "last_entry_times": {
     "XAUUSD#_Judas": "2026-11-24T14:40:38.992909+00:00",
     "XAUUSD#_Lunch": "2026-11-24T17:05:32.053320+00:00"
