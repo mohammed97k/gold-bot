@@ -1,6 +1,22 @@
 {
   "active_trades": [],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "2022-AM",
+      "direction": "SELL",
+      "entry": 3450.6,
+      "sl": 3461.72,
+      "tp1": 3440.6,
+      "tp2": 3430.6,
+      "tp3": 3420.6,
+      "risk_pts": 111.1714235987165,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-25T16:00:47.234631+00:00"
+    }
+  ],
   "last_entry_times": {
     "XAUUSD#_FVG": "2026-11-25T08:50:35.968773+00:00"
   },
