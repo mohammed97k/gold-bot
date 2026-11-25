@@ -11,7 +11,7 @@
       "tp3": 3506.51,
       "risk_pts": 122.28340152863893,
       "tp1_hit": true,
-      "tp2_hit": false,
+      "tp2_hit": true,
       "tp3_hit": false,
       "created_at": "2026-11-25T08:40:34.611260+00:00",
       "entry_time": "2026-11-25T08:50:35.968773+00:00"
