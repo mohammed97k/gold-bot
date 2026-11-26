@@ -1,9 +1,6 @@
 {
   "active_trades": [],
   "pending_orders": [],
-  "last_entry_times": {
-    "XAUUSD#_FVG": "2026-11-25T08:50:35.968773+00:00",
-    "XAUUSD#_2022-AM": "2026-11-25T16:25:31.744516+00:00"
-  },
-  "last_day": "2026-11-25"
+  "last_entry_times": {},
+  "last_day": "2026-11-26"
 }
