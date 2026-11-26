@@ -49,7 +49,23 @@
       "entry_time": "2026-11-26T16:15:32.241145+00:00"
     }
   ],
-  "pending_orders": [],
+  "pending_orders": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "Lunch",
+      "direction": "SELL",
+      "entry": 3576.42,
+      "sl": 3583.93,
+      "tp1": 3566.42,
+      "tp2": 3556.42,
+      "tp3": 3546.42,
+      "risk_pts": 75.0921843961487,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "created_at": "2026-11-26T16:50:32.198656+00:00"
+    }
+  ],
   "last_entry_times": {
     "XAUUSD#_OB": "2026-11-26T14:05:32.815100+00:00",
     "XAUUSD#_Judas": "2026-11-26T14:35:30.016440+00:00",
