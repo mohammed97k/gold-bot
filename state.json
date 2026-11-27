@@ -1,21 +1,5 @@
 {
-  "active_trades": [
-    {
-      "symbol": "XAUUSD#",
-      "model": "OB",
-      "direction": "SELL",
-      "entry": 3630.83,
-      "sl": 3643.36,
-      "tp1": 3620.83,
-      "tp2": 3610.83,
-      "tp3": 3600.83,
-      "risk_pts": 125.3064978439943,
-      "tp1_hit": false,
-      "tp2_hit": false,
-      "tp3_hit": false,
-      "entry_time": "2026-11-27T17:05:32.175646+00:00"
-    }
-  ],
+  "active_trades": [],
   "pending_orders": [],
   "last_entry_times": {
     "XAUUSD#_Mitig": "2026-11-27T13:30:48.754259+00:00",
