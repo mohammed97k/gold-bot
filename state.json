@@ -1,6 +1,24 @@
 {
-  "active_trades": [],
+  "active_trades": [
+    {
+      "symbol": "XAUUSD#",
+      "model": "Mitig",
+      "direction": "BUY",
+      "entry": 3675.64,
+      "sl": 3665.91,
+      "tp1": 3685.64,
+      "tp2": 3695.64,
+      "tp3": 3705.64,
+      "risk_pts": 97.29367270691,
+      "tp1_hit": false,
+      "tp2_hit": false,
+      "tp3_hit": false,
+      "entry_time": "2026-11-27T13:30:48.754259+00:00"
+    }
+  ],
   "pending_orders": [],
-  "last_entry_times": {},
+  "last_entry_times": {
+    "XAUUSD#_Mitig": "2026-11-27T13:30:48.754259+00:00"
+  },
   "last_day": "2026-11-27"
 }
